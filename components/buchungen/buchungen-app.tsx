@@ -1,22 +1,28 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Download, Plus, Search, X } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Download, Plus, Search, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Hint } from "@/components/ui/tooltip";
+import {
+  createBuchungAction,
+  deleteBuchungAction,
+  updateBuchungAction,
+} from "@/app/actions/transactions";
+import { importCsvAction } from "@/app/actions/import";
 import { getKategorie } from "@/lib/categories";
-import { buchungenToCsv, downloadCsv } from "@/lib/export";
-import { useBuchungen } from "@/lib/store";
-import type { Buchung, BuchungInput } from "@/lib/types";
+import type { AppUser, Buchung, BuchungInput, YearTotals } from "@/lib/types";
 import { BuchungDialog } from "./buchung-dialog";
 import { BuchungenList } from "./buchungen-list";
-import { BuchungenSkeleton } from "./buchungen-skeleton";
 import { BuchungenTable, type Sort, type SortKey } from "./buchungen-table";
 import { CategoryCombobox } from "./category-combobox";
+import { ConfirmDeleteDialog } from "./confirm-delete-dialog";
 import { EmptyState } from "./empty-state";
+import { ImportDialog } from "./import-dialog";
 import { Totals } from "./totals";
 
 const collator = new Intl.Collator("de");
@@ -25,14 +31,11 @@ function compare(a: Buchung, b: Buchung, key: SortKey): number {
   switch (key) {
     case "art":
       return collator.compare(
-        getKategorie(a.kategorieId)?.name ?? "",
-        getKategorie(b.kategorieId)?.name ?? "",
+        getKategorie(a.kategorieId)?.name ?? a.kategorieId,
+        getKategorie(b.kategorieId)?.name ?? b.kategorieId,
       );
     case "konto":
-      return collator.compare(
-        getKategorie(a.kategorieId)?.konto ?? "",
-        getKategorie(b.kategorieId)?.konto ?? "",
-      );
+      return collator.compare(a.konto, b.konto);
     case "bezeichnung":
       return collator.compare(a.bezeichnung, b.bezeichnung);
     case "datum":
@@ -50,35 +53,41 @@ function compare(a: Buchung, b: Buchung, key: SortKey): number {
   }
 }
 
-export function BuchungenApp() {
-  const { buchungen, loading, add, edit, remove, restore } = useBuchungen();
-
-  const [jahr, setJahr] = useState(() => new Date().getFullYear());
+export function BuchungenApp({
+  user,
+  jahr,
+  jahre,
+  buchungen,
+  totals,
+  loadError,
+}: {
+  user: AppUser;
+  jahr: number;
+  jahre: number[];
+  buchungen: Buchung[];
+  totals: YearTotals;
+  loadError: string | null;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
   const [suche, setSuche] = useState("");
   const [kategorie, setKategorie] = useState<string | null>(null);
   const [sort, setSort] = useState<Sort>({ key: "datum", dir: "desc" });
   const [dialog, setDialog] = useState<{ open: boolean; buchung?: Buchung }>({
     open: false,
   });
-
-  const jahre = useMemo(() => {
-    const set = new Set<number>([new Date().getFullYear(), jahr]);
-    for (const b of buchungen) set.add(Number(b.datum.slice(0, 4)));
-    return [...set].sort((a, b) => b - a);
-  }, [buchungen, jahr]);
-
-  const imJahr = useMemo(
-    () => buchungen.filter((b) => b.datum.startsWith(`${jahr}-`)),
-    [buchungen, jahr],
-  );
+  const [toDelete, setToDelete] = useState<Buchung | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const sichtbar = useMemo(() => {
     const q = suche.trim().toLocaleLowerCase("de");
-    const rows = imJahr.filter((b) => {
+    const rows = buchungen.filter((b) => {
       if (kategorie && b.kategorieId !== kategorie) return false;
       if (!q) return true;
       const k = getKategorie(b.kategorieId);
-      return `${b.bezeichnung} ${k?.name ?? ""} ${k?.konto ?? ""}`
+      return `${b.bezeichnung} ${k?.name ?? b.kategorieId} ${b.konto}`
         .toLocaleLowerCase("de")
         .includes(q);
     });
@@ -87,17 +96,7 @@ export function BuchungenApp() {
       (a, b) =>
         factor * compare(a, b, sort.key) || b.datum.localeCompare(a.datum),
     );
-  }, [imJahr, suche, kategorie, sort]);
-
-  const summen = useMemo(() => {
-    let einnahmen = 0;
-    let ausgaben = 0;
-    for (const b of sichtbar) {
-      if (b.typ === "einnahme") einnahmen += b.betragCent;
-      else ausgaben += b.betragCent;
-    }
-    return { einnahmen, ausgaben };
-  }, [sichtbar]);
+  }, [buchungen, suche, kategorie, sort]);
 
   const gefiltert = Boolean(suche.trim() || kategorie);
 
@@ -105,49 +104,107 @@ export function BuchungenApp() {
     setSort((s) =>
       s.key === key
         ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
-        : { key, dir: key === "datum" || key === "einnahmen" || key === "ausgaben" ? "desc" : "asc" },
+        : {
+            key,
+            dir:
+              key === "datum" || key === "einnahmen" || key === "ausgaben"
+                ? "desc"
+                : "asc",
+          },
     );
+
+  const setJahr = (next: number) => {
+    startTransition(() => {
+      router.push(`/?jahr=${next}`);
+    });
+  };
 
   const openNeu = () => setDialog({ open: true });
   const openEdit = (buchung: Buchung) => setDialog({ open: true, buchung });
   const closeDialog = () => setDialog((d) => ({ ...d, open: false }));
 
-  const handleSubmit = (input: BuchungInput) => {
-    if (dialog.buchung) {
-      edit(dialog.buchung.id, input);
-      toast.success("Buchung gespeichert");
-    } else {
-      add(input);
-      toast.success("Buchung angelegt");
+  const handleSubmit = async (input: BuchungInput) => {
+    if (saving) return { form: "Bitte warten…" };
+    setSaving(true);
+    try {
+      const result = dialog.buchung
+        ? await updateBuchungAction(dialog.buchung.id, input)
+        : await createBuchungAction(input);
+      if (!result.ok) {
+        toast.error(result.error);
+        return result.fieldErrors ?? { form: result.error };
+      }
+      toast.success(dialog.buchung ? "Buchung gespeichert" : "Buchung angelegt");
+      const neuesJahr = Number(input.datum.slice(0, 4));
+      closeDialog();
+      startTransition(() => {
+        if (neuesJahr !== jahr) router.push(`/?jahr=${neuesJahr}`);
+        else router.refresh();
+      });
+      return null;
+    } finally {
+      setSaving(false);
     }
-    const neuesJahr = Number(input.datum.slice(0, 4));
-    if (neuesJahr !== jahr) setJahr(neuesJahr);
-    closeDialog();
   };
 
-  const handleDelete = (buchung: Buchung) => {
-    remove(buchung.id);
-    closeDialog();
-    toast("Buchung gelöscht", {
-      description: buchung.bezeichnung,
-      action: { label: "Rückgängig", onClick: () => restore(buchung) },
-    });
+  const handleDelete = async (buchung: Buchung) => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const result = await deleteBuchungAction(buchung.id);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success("Buchung gelöscht");
+      setToDelete(null);
+      closeDialog();
+      startTransition(() => router.refresh());
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleExport = () => {
-    if (sichtbar.length === 0) {
+    if (buchungen.length === 0) {
       toast.error("Keine Buchungen zum Exportieren");
       return;
     }
-    downloadCsv(`buchungen-${jahr}.csv`, buchungenToCsv(sichtbar));
-    toast.success(
-      `${sichtbar.length} ${sichtbar.length === 1 ? "Buchung" : "Buchungen"} exportiert`,
-    );
+    window.location.assign(`/api/export?year=${jahr}`);
+    toast.success("Export wird heruntergeladen");
+  };
+
+  const handleImport = async (file: File) => {
+    setImporting(true);
+    try {
+      const data = new FormData();
+      data.set("file", file);
+      const result = await importCsvAction(data);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(
+        `${result.data.imported} importiert` +
+          (result.data.skipped
+            ? `, ${result.data.skipped} bereits vorhanden`
+            : ""),
+      );
+      setImportOpen(false);
+      startTransition(() => router.refresh());
+    } finally {
+      setImporting(false);
+    }
   };
 
   return (
     <div className="min-h-dvh">
-      <Header jahr={jahr} jahre={jahre} onJahrChange={setJahr} />
+      <Header
+        jahr={jahr}
+        jahre={jahre}
+        onJahrChange={setJahr}
+        user={user}
+      />
 
       <main className="mx-auto max-w-6xl px-4 pt-6 pb-16 md:px-6 md:pt-8">
         <div className="flex items-start justify-between gap-4 md:items-end">
@@ -162,10 +219,7 @@ export function BuchungenApp() {
           </Button>
         </div>
 
-        <div
-          role="search"
-          className="mt-6 flex flex-wrap items-center gap-2"
-        >
+        <div role="search" className="mt-6 flex flex-wrap items-center gap-2">
           <div className="relative w-full md:w-auto md:flex-1">
             <Search
               className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-subtle-foreground md:left-2.5"
@@ -197,6 +251,15 @@ export function BuchungenApp() {
             onChange={setKategorie}
             className="min-w-0 flex-1 md:w-56 md:flex-none"
           />
+          <Hint label="CSV importieren">
+            <Button
+              onClick={() => setImportOpen(true)}
+              aria-label="CSV importieren"
+            >
+              <Upload />
+              <span className="hidden md:inline">Import</span>
+            </Button>
+          </Hint>
           <Hint label="Als CSV exportieren">
             <Button onClick={handleExport} aria-label="Als CSV exportieren">
               <Download />
@@ -209,8 +272,11 @@ export function BuchungenApp() {
           aria-label={`Buchungen ${jahr}`}
           className="mt-3 rounded-md border"
         >
-          {loading ? (
-            <BuchungenSkeleton />
+          {loadError ? (
+            <div className="px-6 py-16 text-center">
+              <p className="text-sm font-medium">Daten konnten nicht geladen werden</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">{loadError}</p>
+            </div>
           ) : sichtbar.length === 0 ? (
             <EmptyState
               gefiltert={gefiltert}
@@ -229,7 +295,7 @@ export function BuchungenApp() {
                   sort={sort}
                   onSort={handleSort}
                   onEdit={openEdit}
-                  onDelete={handleDelete}
+                  onDelete={setToDelete}
                 />
               </div>
               <div className="md:hidden">
@@ -237,31 +303,49 @@ export function BuchungenApp() {
               </div>
               <div className="overflow-hidden rounded-b-[5px]">
                 <Totals
-                  einnahmenCent={summen.einnahmen}
-                  ausgabenCent={summen.ausgaben}
+                  einnahmenCent={totals.incomeCents}
+                  ausgabenCent={totals.expenseCents}
                 />
               </div>
             </>
           )}
         </section>
 
-        {!loading && sichtbar.length > 0 && (
+        {!loadError && (
           <p className="mt-3 text-xs text-subtle-foreground">
             {sichtbar.length} {sichtbar.length === 1 ? "Buchung" : "Buchungen"}
-            {gefiltert && ` von ${imJahr.length}`} in {jahr}
-            {gefiltert && " · Summen beziehen sich auf die gefilterte Auswahl"}
+            {gefiltert && ` von ${buchungen.length}`} in {jahr}
+            {gefiltert && " · Summen beziehen sich auf das gesamte Jahr"}
+            {pending ? " · Aktualisiere…" : ""}
           </p>
         )}
       </main>
 
       <BuchungDialog
         open={dialog.open}
+        pending={saving}
         onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
         buchung={dialog.buchung}
         onSubmit={handleSubmit}
         onDelete={
-          dialog.buchung ? () => handleDelete(dialog.buchung!) : undefined
+          dialog.buchung ? () => setToDelete(dialog.buchung ?? null) : undefined
         }
+      />
+      <ConfirmDeleteDialog
+        buchung={toDelete}
+        pending={saving}
+        onOpenChange={(open) => {
+          if (!open) setToDelete(null);
+        }}
+        onConfirm={() => {
+          if (toDelete) void handleDelete(toDelete);
+        }}
+      />
+      <ImportDialog
+        open={importOpen}
+        pending={importing}
+        onOpenChange={setImportOpen}
+        onImport={handleImport}
       />
     </div>
   );

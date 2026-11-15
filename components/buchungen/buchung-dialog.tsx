@@ -21,15 +21,17 @@ import { BuchungForm } from "./buchung-form";
 /** Dialog auf dem Desktop, Drawer auf kleinen Bildschirmen */
 export function BuchungDialog({
   open,
+  pending,
   onOpenChange,
   buchung,
   onSubmit,
   onDelete,
 }: {
   open: boolean;
+  pending?: boolean;
   onOpenChange: (open: boolean) => void;
   buchung?: Buchung;
-  onSubmit: (input: BuchungInput) => void;
+  onSubmit: (input: BuchungInput) => Promise<Record<string, string> | null>;
   onDelete?: () => void;
 }) {
   const desktop = useMediaQuery("(min-width: 768px)");
@@ -42,6 +44,7 @@ export function BuchungDialog({
     <BuchungForm
       key={buchung?.id ?? "neu"}
       buchung={buchung}
+      pending={pending}
       onSubmit={onSubmit}
       onCancel={() => onOpenChange(false)}
       onDelete={onDelete}

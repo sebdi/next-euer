@@ -6,22 +6,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CategoryCombobox } from "./category-combobox";
-import { getKategorie } from "@/lib/categories";
+import {
+  defaultAccountForCategory,
+  defaultTypForCategory,
+  getKategorie,
+} from "@/lib/categories";
 import { centToInput, heuteIso, parseBetrag } from "@/lib/format";
 import type { Buchung, BuchungInput, BuchungTyp } from "@/lib/types";
 
 type Errors = Partial<
-  Record<"bezeichnung" | "kategorie" | "datum" | "betrag", string>
+  Record<"bezeichnung" | "kategorie" | "datum" | "betrag" | "konto", string>
 >;
 
 export function BuchungForm({
   buchung,
+  pending,
   onSubmit,
   onCancel,
   onDelete,
 }: {
   buchung?: Buchung;
-  onSubmit: (input: BuchungInput) => void;
+  pending?: boolean;
+  onSubmit: (input: BuchungInput) => Promise<Record<string, string> | null>;
   onCancel: () => void;
   onDelete?: () => void;
 }) {
@@ -31,6 +37,7 @@ export function BuchungForm({
   const [kategorieId, setKategorieId] = useState<string | null>(
     buchung?.kategorieId ?? null,
   );
+  const [konto, setKonto] = useState(buchung?.konto ?? "");
   const [datum, setDatum] = useState(buchung?.datum ?? heuteIso());
   const [betrag, setBetrag] = useState(
     buchung ? centToInput(buchung.betragCent) : "",
@@ -40,7 +47,7 @@ export function BuchungForm({
   const clear = (key: keyof Errors) =>
     setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const cent = parseBetrag(betrag);
     const next: Errors = {};
@@ -58,13 +65,30 @@ export function BuchungForm({
       document.getElementById(`${uid}-${firstInvalid}`)?.focus();
       return;
     }
-    onSubmit({
-      typ,
-      bezeichnung: bezeichnung.trim(),
-      kategorieId: kategorieId!,
-      datum,
-      betragCent: cent!,
-    });
+    let serverErrors: Record<string, string> | null = null;
+    try {
+      serverErrors = await onSubmit({
+        typ,
+        bezeichnung: bezeichnung.trim(),
+        kategorieId: kategorieId!,
+        konto: konto.trim(),
+        datum,
+        betragCent: cent!,
+      });
+    } catch {
+      setErrors({ bezeichnung: "Die Buchung konnte nicht gespeichert werden." });
+      return;
+    }
+    if (serverErrors) {
+      const mapped: Errors = {
+        bezeichnung: serverErrors.bezeichnung,
+        kategorie: serverErrors.kategorieId ?? serverErrors.kategorie,
+        datum: serverErrors.datum,
+        betrag: serverErrors.betragCent ?? serverErrors.betrag,
+        konto: serverErrors.konto,
+      };
+      setErrors(mapped);
+    }
   };
 
   return (
@@ -104,6 +128,7 @@ export function BuchungForm({
               placeholder="z. B. Bahnfahrt München"
               autoComplete="off"
               autoFocus={!buchung}
+              disabled={pending}
             />
           )}
         </Field>
@@ -117,8 +142,34 @@ export function BuchungForm({
                 setKategorieId(id);
                 clear("kategorie");
                 const k = id ? getKategorie(id) : undefined;
-                if (k) setTyp(k.typ);
+                if (k) {
+                  setTyp(defaultTypForCategory(k.id));
+                  setKonto((prev) => {
+                    const previousDefault = kategorieId
+                      ? defaultAccountForCategory(kategorieId)
+                      : "";
+                    if (!prev || prev === previousDefault) return k.konto;
+                    return prev;
+                  });
+                }
               }}
+            />
+          )}
+        </Field>
+
+        <Field id={`${uid}-konto`} label="Konto" error={errors.konto}>
+          {(field) => (
+            <Input
+              {...field}
+              value={konto}
+              onChange={(e) => {
+                setKonto(e.target.value);
+                clear("konto");
+              }}
+              placeholder="optional"
+              autoComplete="off"
+              disabled={pending}
+              className="num"
             />
           )}
         </Field>
@@ -135,6 +186,7 @@ export function BuchungForm({
                   clear("datum");
                 }}
                 className="num"
+                disabled={pending}
               />
             )}
           </Field>
@@ -155,6 +207,7 @@ export function BuchungForm({
                 placeholder="0,00"
                 autoComplete="off"
                 className="num text-right"
+                disabled={pending}
               />
             )}
           </Field>
@@ -163,15 +216,19 @@ export function BuchungForm({
 
       <div className="flex flex-col-reverse gap-2 border-t bg-surface px-4 py-3 md:flex-row md:items-center md:px-5 md:rounded-b-lg">
         {onDelete && (
-          <Button type="button" variant="destructive" onClick={onDelete}>
+          <Button type="button" variant="destructive" onClick={onDelete} disabled={pending}>
             Löschen
           </Button>
         )}
-        <Button type="button" onClick={onCancel} className="md:ml-auto">
+        <Button type="button" onClick={onCancel} className="md:ml-auto" disabled={pending}>
           Abbrechen
         </Button>
-        <Button type="submit" variant="primary">
-          {buchung ? "Speichern" : "Buchung anlegen"}
+        <Button type="submit" variant="primary" disabled={pending}>
+          {pending
+            ? "Speichern…"
+            : buchung
+              ? "Speichern"
+              : "Buchung anlegen"}
         </Button>
       </div>
     </form>

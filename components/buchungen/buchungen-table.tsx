@@ -105,7 +105,9 @@ export function BuchungenTable({
                   {k?.name ?? "Unbekannt"}
                 </span>
               </td>
-              <td className="num px-3 text-muted-foreground">{k?.konto ?? "–"}</td>
+              <td className="num px-3 text-muted-foreground">
+                {b.konto || k?.konto || "–"}
+              </td>
               <td className="truncate px-3 font-medium" title={b.bezeichnung}>
                 {b.bezeichnung}
               </td>

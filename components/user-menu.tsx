@@ -2,7 +2,7 @@
 
 import { Avatar } from "radix-ui";
 import { ExternalLink, LogOut, Settings } from "lucide-react";
-import { toast } from "sonner";
+import { signOutAction } from "@/app/actions/auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,11 +11,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DEMO_USER } from "@/lib/user";
+import type { AppUser } from "@/lib/types";
 
-export function UserMenu() {
-  const user = DEMO_USER;
-  const initials = user.name.slice(0, 2).toUpperCase();
+export function UserMenu({ user }: { user: AppUser }) {
+  const initials = (user.name || user.login || "N")
+    .slice(0, 2)
+    .toUpperCase();
+  const githubHref = user.login
+    ? `https://github.com/${encodeURIComponent(user.login)}`
+    : "https://github.com";
 
   return (
     <DropdownMenu>
@@ -33,22 +37,24 @@ export function UserMenu() {
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>
           <div className="text-sm font-medium">{user.name}</div>
-          <div className="text-xs text-muted-foreground">@{user.login}</div>
+          {user.login && (
+            <div className="text-xs text-muted-foreground">@{user.login}</div>
+          )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled>
           <Settings /> Einstellungen
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <a href="https://github.com" target="_blank" rel="noreferrer">
+          <a href={githubHref} target="_blank" rel="noreferrer">
             <ExternalLink /> GitHub öffnen
           </a>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onSelect={() =>
-            toast("Anmeldung ist in dieser Demo noch nicht angebunden.")
-          }
+          onSelect={() => {
+            void signOutAction();
+          }}
         >
           <LogOut /> Abmelden
         </DropdownMenuItem>

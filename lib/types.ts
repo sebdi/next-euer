@@ -13,6 +13,7 @@ export interface Buchung {
   id: string;
   typ: BuchungTyp;
   kategorieId: string;
+  konto: string;
   bezeichnung: string;
   /** ISO-Datum, JJJJ-MM-TT */
   datum: string;
@@ -21,3 +22,15 @@ export interface Buchung {
 }
 
 export type BuchungInput = Omit<Buchung, "id">;
+
+export interface YearTotals {
+  incomeCents: number;
+  expenseCents: number;
+  profitCents: number;
+}
+
+export type AppUser = {
+  name: string;
+  login: string;
+  avatarUrl?: string;
+};

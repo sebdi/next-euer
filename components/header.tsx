@@ -9,15 +9,18 @@ import {
 } from "@/components/ui/select";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { UserMenu } from "@/components/user-menu";
+import type { AppUser } from "@/lib/types";
 
 export function Header({
   jahr,
   jahre,
   onJahrChange,
+  user,
 }: {
   jahr: number;
   jahre: number[];
   onJahrChange: (jahr: number) => void;
+  user: AppUser;
 }) {
   return (
     <header className="border-b bg-background">
@@ -49,7 +52,7 @@ export function Header({
         </Select>
         <div className="ml-auto flex items-center gap-3">
           <ThemeSwitcher />
-          <UserMenu />
+          <UserMenu user={user} />
         </div>
       </div>
     </header>
