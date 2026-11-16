@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PrivacyToggle } from "@/components/privacy-toggle";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { UserMenu } from "@/components/user-menu";
 import type { AppUser } from "@/lib/types";
@@ -51,6 +52,7 @@ export function Header({
           </SelectContent>
         </Select>
         <div className="ml-auto flex items-center gap-3">
+          <PrivacyToggle />
           <ThemeSwitcher />
           <UserMenu user={user} />
         </div>

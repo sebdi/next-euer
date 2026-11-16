@@ -172,7 +172,7 @@ function ImportForm({
                       {row.error ? (
                         <span className="text-destructive">{row.error}</span>
                       ) : row.data ? (
-                        <span>
+                        <span data-privacy>
                           {row.data.category} · {row.data.description} ·{" "}
                           {isoToGermanDate(row.data.date)} ·{" "}
                           {formatEuro(

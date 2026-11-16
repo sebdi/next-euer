@@ -107,6 +107,21 @@
   letter-spacing: -0.01em;
 }
 
+html.privacy [data-privacy] {
+  filter: blur(7px);
+  user-select: none;
+  transition: filter 150ms ease;
+}
+
+html.privacy [data-privacy="strong"] {
+  filter: blur(9px);
+}
+
+html.privacy td[data-privacy],
+html.privacy [data-privacy][title] {
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

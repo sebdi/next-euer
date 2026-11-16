@@ -26,16 +26,19 @@ export function BuchungenList({
               className="flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors duration-150 active:bg-surface"
             >
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">
+                <span data-privacy className="block truncate text-sm font-medium">
                   {b.bezeichnung}
                 </span>
                 <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span className="num">{formatDatum(b.datum)}</span>
                   <span aria-hidden className="text-border-strong">·</span>
-                  <span className="truncate">{k?.name ?? "Unbekannt"}</span>
+                  <span data-privacy className="truncate">
+                    {k?.name ?? "Unbekannt"}
+                  </span>
                 </span>
               </span>
               <span
+                data-privacy="strong"
                 className={cn(
                   "num shrink-0 text-sm",
                   einnahme ? "font-medium" : "text-muted-foreground",

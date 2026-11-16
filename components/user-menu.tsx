@@ -27,7 +27,10 @@ export function UserMenu({ user }: { user: AppUser }) {
         className="rounded-full transition-opacity hover:opacity-80"
         aria-label="Benutzermenü"
       >
-        <Avatar.Root className="flex size-7 items-center justify-center overflow-hidden rounded-full border bg-muted">
+        <Avatar.Root
+          data-privacy
+          className="flex size-7 items-center justify-center overflow-hidden rounded-full border bg-muted"
+        >
           <Avatar.Image src={user.avatarUrl} alt="" className="size-full" />
           <Avatar.Fallback className="text-[10px] font-medium text-muted-foreground">
             {initials}
@@ -36,9 +39,13 @@ export function UserMenu({ user }: { user: AppUser }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>
-          <div className="text-sm font-medium">{user.name}</div>
+          <div data-privacy className="text-sm font-medium">
+            {user.name}
+          </div>
           {user.login && (
-            <div className="text-xs text-muted-foreground">@{user.login}</div>
+            <div data-privacy className="text-xs text-muted-foreground">
+              @{user.login}
+            </div>
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

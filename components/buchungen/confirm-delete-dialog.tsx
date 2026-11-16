@@ -27,9 +27,14 @@ export function ConfirmDeleteDialog({
         <DialogHeader>
           <DialogTitle>Buchung löschen?</DialogTitle>
           <DialogDescription>
-            {buchung
-              ? `„${buchung.bezeichnung}“ wird endgültig entfernt.`
-              : "Die Buchung wird endgültig entfernt."}
+            {buchung ? (
+              <>
+                „<span data-privacy>{buchung.bezeichnung}</span>“ wird endgültig
+                entfernt.
+              </>
+            ) : (
+              "Die Buchung wird endgültig entfernt."
+            )}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col-reverse gap-2 px-5 py-3 md:flex-row md:justify-end">

@@ -50,6 +50,7 @@ export function CategoryCombobox({
       <PopoverTrigger
         role="combobox"
         aria-expanded={open}
+        data-privacy
         className={cn(
           "inline-flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-left text-base transition-colors duration-150 hover:border-border-strong aria-invalid:border-destructive md:h-8 md:text-sm",
           className,

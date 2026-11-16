@@ -120,6 +120,7 @@ export function BuchungForm({
           {(field) => (
             <Input
               {...field}
+              data-privacy
               value={bezeichnung}
               onChange={(e) => {
                 setBezeichnung(e.target.value);
@@ -161,6 +162,7 @@ export function BuchungForm({
           {(field) => (
             <Input
               {...field}
+              data-privacy
               value={konto}
               onChange={(e) => {
                 setKonto(e.target.value);
@@ -194,6 +196,7 @@ export function BuchungForm({
             {(field) => (
               <Input
                 {...field}
+                data-privacy="strong"
                 value={betrag}
                 onChange={(e) => {
                   setBetrag(e.target.value);

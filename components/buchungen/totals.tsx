@@ -43,6 +43,7 @@ function Cell({
         {label}
       </dt>
       <dd
+        data-privacy="strong"
         className={cn(
           "num text-[13px]",
           strong && "text-[15px] font-semibold",

@@ -101,23 +101,30 @@ export function BuchungenTable({
               className="group transition-colors duration-150 hover:bg-surface [&>td]:border-b last:[&>td]:border-b-0"
             >
               <td className="h-10 px-3">
-                <span className="inline-block max-w-full truncate rounded-sm border bg-surface px-1.5 py-px align-middle text-xs text-muted-foreground group-hover:bg-background">
+                <span
+                  data-privacy
+                  className="inline-block max-w-full truncate rounded-sm border bg-surface px-1.5 py-px align-middle text-xs text-muted-foreground group-hover:bg-background"
+                >
                   {k?.name ?? "Unbekannt"}
                 </span>
               </td>
-              <td className="num px-3 text-muted-foreground">
+              <td data-privacy className="num px-3 text-muted-foreground">
                 {b.konto || k?.konto || "–"}
               </td>
-              <td className="truncate px-3 font-medium" title={b.bezeichnung}>
+              <td
+                data-privacy
+                className="truncate px-3 font-medium"
+                title={b.bezeichnung}
+              >
                 {b.bezeichnung}
               </td>
               <td className="num px-3 text-muted-foreground">
                 {formatDatum(b.datum)}
               </td>
-              <td className="num px-3 text-right">
+              <td data-privacy="strong" className="num px-3 text-right">
                 {b.typ === "einnahme" && formatEuro(b.betragCent)}
               </td>
-              <td className="num px-3 text-right">
+              <td data-privacy="strong" className="num px-3 text-right">
                 {b.typ === "ausgabe" && formatEuro(b.betragCent)}
               </td>
               <td className="px-2">
