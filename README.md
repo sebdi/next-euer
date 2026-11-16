@@ -1,45 +1,126 @@
 # NextEÜR
 
-Minimalist, self-hosted income and expense bookkeeping for German freelancers (Einnahmenüberschussrechnung). Each deployment is a private instance for a single GitHub account.
+NextEÜR is a small, self-hosted book for a German [Einnahmenüberschussrechnung](https://www.gesetze-im-internet.de/estg/__4.html) (EÜR): the cash-basis record of business income and expenses that many freelancers keep for the year.
 
-NextEÜR is not tax software, not an ELSTER product, and not GoBD-certified. You remain responsible for the correctness of your records and for compliance with German tax law.
+You deploy your own copy. One deployment belongs to one person, stores their bookings in their own PostgreSQL database, and lets only one GitHub account sign in. There is no shared server and no access to anyone else's books.
 
-## Features
+NextEÜR is a personal ledger, not tax software. It does not file with ELSTER, does not replace an accountant, and is not GoBD-certified. You are responsible for your records and for German tax law.
 
-- GitHub OAuth with a single allowed numeric GitHub user ID
-- PostgreSQL storage via Prisma (no browser or file-based books)
-- Create, edit, delete, search, sort, and filter bookings
-- Calendar-year selection with exact integer-cent totals (income, expenses, profit/loss)
-- CSV import with preview and CSV export (semicolon, UTF-8 BOM)
-- Desktop table and mobile list, light and dark theme
+## What you can do
 
-## Tech stack
+- Sign in with GitHub. Only the numeric GitHub user ID you configure is accepted.
+- Record income and expenses in whole euro cents, with German category names and an optional account number.
+- Switch calendar years and see income, expenses, and profit or loss for the whole year.
+- Search, sort, and filter the list. On a desktop you get a table. On a phone you get a list.
+- Switch light and dark mode, and blur amounts and personal details when someone is looking at your screen.
+- Import and export a year as semicolon-separated CSV.
+- For **Bewirtungskosten**, enter the gross amount. The booking stores 70% of it, which is the deductible share, and keeps the gross amount so you can edit it later.
+- For **Fahrtkosten**, enter a start and a destination. The app asks a routing service for the driving distance and fills in the amount from a kilometre rate. The default rate is 0,30 €/km. You can mark the trip as a return journey, which doubles that distance. A home address saved in the account menu can be inserted as the start or the destination.
 
-- Next.js App Router, TypeScript, React
-- PostgreSQL and Prisma ORM
-- Auth.js (NextAuth) with GitHub OAuth
-- Zod validation
-- Tailwind CSS
+Default categories are Abschreibungen, Bewirtungskosten, Bürobedarf, Fahrtkosten, Fortbildungen, Homeoffice, Internet und Telefon, Laufende EDV Kosten, Nutzungseinnahme, Öffentliche und andere, Übernachtungskosten, and Verpflegung. Suggested account numbers are placeholders. Use the chart of accounts you actually keep.
 
-## Local development
+The app does not calculate VAT, income tax, or other deduction limits.
 
-Requirements: Node.js 20.19+ and a PostgreSQL database.
+## Deploy on Vercel
+
+Each person deploys a separate Vercel project and a separate database. Fork this repository if you want your own Git history. You can also deploy it directly.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsebdi%2Fnext-euer&env=GITHUB_CLIENT_ID,GITHUB_CLIENT_SECRET,GITHUB_ALLOWED_USER_ID,AUTH_SECRET,AUTH_URL,HEIGIT_API_KEY&envDescription=GitHub%20OAuth%20credentials%2C%20your%20numeric%20GitHub%20user%20ID%2C%20a%20session%20secret%2C%20the%20public%20site%20URL%2C%20and%20an%20optional%20HeiGIT%20key&envLink=https%3A%2F%2Fgithub.com%2Fsebdi%2Fnext-euer%23environment-variables&project-name=next-euer&repository-name=next-euer)
+
+Connect the database before the first successful build. The build applies database migrations. Without `DATABASE_URL`, that step cannot reach a database and the deployment fails.
+
+### 1. Create the project
+
+Import the repository in the [Vercel dashboard](https://vercel.com/new) or use the button above. Leave the framework as Next.js.
+
+The build command is already set in [`vercel.json`](./vercel.json):
+
+```text
+npx prisma generate && npx prisma migrate deploy && next build
+```
+
+Keep that command. A plain `next build` skips the migrations, so the app starts against an empty database schema.
+
+### 2. Add PostgreSQL
+
+Create a Postgres database and attach it to the Vercel project. [Neon](https://vercel.com/marketplace/neon) on the Vercel Marketplace does this for you and sets `DATABASE_URL` for Production and Preview.
+
+Use a pooled connection string for the running app. On Neon that is the host that contains `-pooler`. Do not point two unrelated deployments at the same database if you want their books kept apart.
+
+If the first deployment already failed because the database was not connected yet, open the project, confirm `DATABASE_URL` is present, and redeploy.
+
+### 3. Create a GitHub OAuth app
+
+1. Open [GitHub OAuth apps](https://github.com/settings/developers) and create a new app.
+2. Homepage URL: your production origin, for example `https://your-project.vercel.app`.
+3. Authorization callback URL, exactly:
+
+   ```text
+   https://your-project.vercel.app/api/auth/callback/github
+   ```
+
+   Use the stable domain people open in the browser. A one-off deployment host such as `your-project-abc123.vercel.app` will not match later visits. If you also use another alias, add that callback URL too.
+4. Copy the client ID and generate a client secret.
+
+For local development, add a second callback URL of `http://localhost:3000/api/auth/callback/github`, or create a separate OAuth app. GitHub rejects a login when the callback URL is not registered for the host you are on. The error looks like: "The redirect_uri is not associated with this application."
+
+### 4. Set the environment variables
+
+In the Vercel project, open **Settings → Environment Variables** and set these for Production. Set the same values for Preview only if preview deployments should accept logins. Preview then needs its own callback URL on the OAuth app.
+
+| Variable | What to put there |
+|---|---|
+| `DATABASE_URL` | Usually filled in by Neon. A pooled Postgres URL. |
+| `GITHUB_CLIENT_ID` | Client ID from the OAuth app. |
+| `GITHUB_CLIENT_SECRET` | Client secret from the OAuth app. |
+| `GITHUB_ALLOWED_USER_ID` | Your numeric GitHub user ID. Digits only, for example `12345678`. |
+| `AUTH_SECRET` | A long random string. Create one with `openssl rand -base64 32`. |
+| `AUTH_URL` | The public origin, for example `https://your-project.vercel.app`. No path, no trailing slash. |
+| `HEIGIT_API_KEY` | Optional. Needed only for driving-distance calculation. |
+| `DISTANCE_PROVIDER` | Optional. Leave unset. The default is `heigit`. |
+
+Find the GitHub user ID by opening `https://api.github.com/users/YOUR_USERNAME` and reading the `id` field. Do not use the username or the email address. If `GITHUB_ALLOWED_USER_ID` is missing or contains anything other than digits, nobody can sign in.
+
+`AUTH_URL` must be the same origin as the callback URL you registered. After changing it, redeploy so new logins use that host.
+
+The variable names are `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`. Auth.js also documents `AUTH_GITHUB_ID` and `AUTH_GITHUB_SECRET`. This project does not read those names.
+
+### 5. Deploy and sign in
+
+Deploy the project, open the production URL, and sign in with the GitHub account whose numeric ID you allowlisted. Every other GitHub account is turned away.
+
+Distance calculation stays disabled until `HEIGIT_API_KEY` is set. Create a free key at [api.heigit.org](https://api.heigit.org/) and copy it from the account dashboard. The key stays on the server. Bookings themselves work without it. You can still type a Fahrtkosten amount by hand.
+
+Do not put Vercel Deployment Protection in front of `/api/auth` unless the OAuth callback can still reach the app. A login wall on the callback breaks GitHub sign-in.
+
+## Run it locally
+
+You need Node.js 20.19 or newer and a PostgreSQL database.
 
 ```bash
-git clone <your-fork-url>
+git clone https://github.com/sebdi/next-euer.git
 cd next-euer
 cp .env.example .env
 npm install
 ```
 
-Fill `.env` (see [Environment variables](#environment-variables)). Then:
+Create an empty database, put its URL in `DATABASE_URL`, and fill in the GitHub and `AUTH_SECRET` values from the table above. For a local OAuth callback, register `http://localhost:3000/api/auth/callback/github`. You can omit `AUTH_URL` locally.
 
 ```bash
 npx prisma migrate deploy
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Unauthenticated visitors are sent to `/login`.
+Open [http://localhost:3000](http://localhost:3000). Visitors who are not signed in are sent to `/login`.
+
+To pull the Production variables from a linked Vercel project instead of copying them by hand:
+
+```bash
+npx vercel link
+npx vercel env pull .env.local
+```
+
+Neon does not inject `DATABASE_URL` into the Development environment. A local `.env` still needs a database URL the machine can reach. `vercel env pull` writes secrets to `.env.local`. That file is gitignored. Do not commit it.
 
 ```bash
 npm test
@@ -47,131 +128,58 @@ npm run typecheck
 npm run build
 ```
 
-## PostgreSQL setup
-
-Create an empty database dedicated to this instance, for example:
-
-```sql
-CREATE DATABASE nexteuer;
-```
-
-Set `DATABASE_URL` to a connection string Prisma can reach. On serverless hosts prefer a pooled URL (Neon pooler, PgBouncer, or similar). Do not reuse a database across unrelated deployments if you want isolation.
-
-Apply schema:
-
-```bash
-npx prisma migrate deploy
-```
-
-Development iteration:
-
-```bash
-npx prisma migrate dev
-```
-
-Generate the client (also runs on `npm install` via `postinstall`):
-
-```bash
-npx prisma generate
-```
-
-## GitHub OAuth setup
-
-1. GitHub → Settings → Developer settings → [OAuth Apps](https://github.com/settings/developers) → New OAuth App.
-2. Application name: `NextEÜR` (or your instance name).
-3. Homepage URL: `http://localhost:3000` locally, or your production origin.
-4. Authorization callback URL:
-   - Local: `http://localhost:3000/api/auth/callback/github`
-   - Production: `https://YOUR_DOMAIN/api/auth/callback/github`
-5. Copy the Client ID and Client Secret into `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
-
-Create a separate OAuth app (or additional callback URL) for production.
-
-## Numeric GitHub user ID
-
-Authorization uses the immutable numeric account ID, never the login name or email.
-
-1. Open `https://api.github.com/users/YOUR_USERNAME` while signed in or in a private browser.
-2. Read the JSON field `"id"` (a number).
-3. Put that value into `GITHUB_ALLOWED_USER_ID`.
-
-Any other GitHub account is rejected. If the variable is missing or not a number, nobody can sign in.
-
 ## Environment variables
 
-| Variable | Purpose |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `GITHUB_CLIENT_ID` | GitHub OAuth client ID |
-| `GITHUB_CLIENT_SECRET` | GitHub OAuth client secret |
-| `GITHUB_ALLOWED_USER_ID` | Numeric GitHub user ID allowed to use this instance |
-| `AUTH_SECRET` | Session cookie signing secret (`openssl rand -base64 32`) |
-| `AUTH_URL` | Optional public origin if Auth.js cannot infer it |
-| `DISTANCE_PROVIDER` | Optional distance backend. Default: `heigit` |
-| `HEIGIT_API_KEY` | API key for the HeiGIT openrouteservice endpoint (`api.heigit.org`) |
+| Variable | Required | Purpose |
+|---|---|---|
+| `DATABASE_URL` | Yes | PostgreSQL connection string for this instance |
+| `GITHUB_CLIENT_ID` | Yes | GitHub OAuth client ID |
+| `GITHUB_CLIENT_SECRET` | Yes | GitHub OAuth client secret |
+| `GITHUB_ALLOWED_USER_ID` | Yes | Numeric GitHub user ID allowed to sign in |
+| `AUTH_SECRET` | Yes | Signs the session cookie |
+| `AUTH_URL` | Production | Public origin Auth.js uses for the OAuth callback |
+| `HEIGIT_API_KEY` | For distances | Key for the HeiGIT routing API |
+| `DISTANCE_PROVIDER` | No | Routing backend. Default: `heigit` |
 
-Fahrtkosten can calculate a driving distance from start and destination. The calculation goes through `DistanceProvider` in `lib/distance`, so another routing service can be added without changing the form. The built-in provider geocodes both addresses and requests a `driving-car` route from [HeiGIT](https://api.heigit.org/). The default allowance is 0,30 €/km and can be changed per booking. A saved home address from the account menu can be inserted as the start or destination. Create a free key in the HeiGIT account dashboard and set `HEIGIT_API_KEY`. The key stays on the server.
+Comments and empty placeholders are in [`.env.example`](./.env.example). Never commit real secrets or real bookings.
 
-See `.env.example` for comments. Never commit real secrets or financial data.
+## Fahrtkosten and the routing API
 
-## Database migrations
+Driving distance goes through the `DistanceProvider` interface in `lib/distance`. Another routing service can be added there without changing the booking form. The included provider geocodes both addresses and requests a `driving-car` route from [HeiGIT](https://api.heigit.org/).
 
-```bash
-npx prisma migrate deploy    # apply committed migrations
-npx prisma migrate dev       # create/apply migrations in development
-npx prisma generate          # regenerate Prisma Client
-```
-
-## Vercel deployment
-
-Each person who uses NextEÜR should deploy their own project and database. There is no shared backend and no maintainer access to your books.
-
-1. Create a PostgreSQL database (for example Neon on the Vercel Marketplace).
-2. Import the Git repository into a new Vercel project.
-3. Set the environment variables from `.env.example` for Production (and Preview if you use GitHub OAuth there).
-4. Set the build command to:
-
-   ```text
-   npx prisma generate && npx prisma migrate deploy && next build
-   ```
-
-5. Add the production callback URL to the GitHub OAuth app: `https://YOUR_DOMAIN/api/auth/callback/github`.
-6. Deploy. Sign in with the allowlisted GitHub account.
-
-Auth.js uses `trustHost` so it works behind Vercel’s proxy. Session cookies are HTTP-only. Do not enable Vercel Deployment Protection in a way that blocks `/api/auth/*` unless you know how to allow the OAuth callback.
+The stored distance is the one-way trip. A return journey doubles that distance when the amount is calculated. The home address is stored on your profile and is only used when you press **Zuhause** on a Fahrtkosten booking.
 
 ## CSV import and export
 
-Export downloads `nexteuer-YYYY.csv` for the selected calendar year (all bookings of that year, not only the current search). Format:
+Export downloads `nexteuer-YYYY.csv` for the selected calendar year. It includes every booking of that year, including ones hidden by the current search.
 
-- UTF-8 with BOM
+- UTF-8 with a byte-order mark
 - Semicolon-separated
 - Header: `Art;Konto;Bezeichnung;Datum;Einnahmen;Ausgaben`
-- Dates `DD.MM.YYYY`
-- German decimal amounts (`1.234,56`)
-- Formula-like cells are prefixed so spreadsheet apps do not execute them
+- Dates as `DD.MM.YYYY`
+- Amounts in German decimal notation, such as `1.234,56`
+- Cells that look like spreadsheet formulas are prefixed so the spreadsheet does not execute them
 
-Import accepts the same layout. The UI shows a preview with per-row errors. Invalid files are rejected as a whole. Valid rows run in one database transaction. Rows that already exist with the same date, category, account, description, and amounts are skipped.
+Import expects the same layout. The dialog shows a preview and marks invalid rows. If any row is invalid, nothing is imported. Valid rows are written in one database transaction. A row that already exists with the same date, category, account, description, and amounts is skipped. Imported text is stored as text and is never evaluated as code.
 
-Imported text is never evaluated as code.
+The 70% Bewirtungskosten reduction applies when you enter a booking in the form. A CSV import stores the amounts in the file as they are.
 
-## Security considerations
+## Security
 
-- Every page, API route, and server action checks the session and the numeric GitHub allowlist on the server.
-- There is no public registration. One GitHub ID per deployment.
-- Amounts are stored as integer cents (`BIGINT`). Validation uses Zod.
-- Prisma parameterizes queries.
-- Secrets stay in environment variables. Financial data stays in your database.
-- Error messages shown to users do not include stack traces or raw database errors.
+- Pages, the export route, and server actions check the session on the server and allow only the configured GitHub user ID.
+- There is no public registration and no second user.
+- Money is stored as integer cents in `BIGINT`. Inputs are checked with Zod.
+- Database queries go through Prisma.
+- Secrets belong in environment variables. Bookings belong in your database.
+- Errors shown in the app do not include stack traces or raw database messages.
 - This repository must not contain real bookings or production credentials.
 
-## Limitations and accounting disclaimer
+## Limits
 
-- NextEÜR is a personal record-keeping tool, not a tax advisor and not a DATEV/ELSTER integration.
-- It does not calculate VAT, income tax, or category-specific deduction limits.
-- Default account numbers are optional placeholders. Align them with your own chart of accounts.
-- It does not claim GoBD certification, audit-proof archiving, or automatic legal compliance.
-- You are responsible for backups, access to your Vercel/database accounts, and the correctness of your books.
+- NextEÜR does not give tax advice and does not connect to DATEV or ELSTER.
+- It does not calculate VAT, income tax, or deduction limits other than the 70% Bewirtungskosten share entered in the form.
+- It does not claim GoBD certification or audit-proof archiving.
+- You keep your own backups and your own access to Vercel, GitHub, and the database.
 
 ## License
 
