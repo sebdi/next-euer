@@ -11,7 +11,7 @@ import {
   defaultTypForCategory,
   getKategorie,
 } from "@/lib/categories";
-import { calculateRouteAction } from "@/app/actions/route";
+import { calculateRouteAction } from "@/app/actions/distance";
 import {
   DEFAULT_KM_RATE_CENTS,
   fahrtkostenCents,
