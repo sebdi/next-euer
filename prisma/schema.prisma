@@ -15,6 +15,8 @@ model Transaction {
   date         DateTime @db.Date
   incomeCents  BigInt   @default(0)
   expenseCents BigInt   @default(0)
+  /// Original gross amount when only 70% of Bewirtungskosten is booked.
+  grossCents   BigInt?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

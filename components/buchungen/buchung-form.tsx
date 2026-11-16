@@ -11,7 +11,8 @@ import {
   defaultTypForCategory,
   getKategorie,
 } from "@/lib/categories";
-import { centToInput, heuteIso, parseBetrag } from "@/lib/format";
+import { centToInput, formatEuro, heuteIso, parseBetrag } from "@/lib/format";
+import { bewirtungAbziehbarCents } from "@/lib/money";
 import type { Buchung, BuchungInput, BuchungTyp } from "@/lib/types";
 
 type Errors = Partial<
@@ -40,12 +41,24 @@ export function BuchungForm({
   const [konto, setKonto] = useState(buchung?.konto ?? "");
   const [datum, setDatum] = useState(buchung?.datum ?? heuteIso());
   const [betrag, setBetrag] = useState(
-    buchung ? centToInput(buchung.betragCent) : "",
+    buchung ? centToInput(buchung.bruttoCent ?? buchung.betragCent) : "",
   );
   const [errors, setErrors] = useState<Errors>({});
 
   const clear = (key: keyof Errors) =>
     setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
+
+  const erfasstBrutto =
+    kategorieId === "Bewirtungskosten" &&
+    typ === "ausgabe" &&
+    (!buchung ||
+      buchung.kategorieId !== "Bewirtungskosten" ||
+      buchung.bruttoCent != null);
+  const geparsterBetrag = parseBetrag(betrag);
+  const abziehbar =
+    erfasstBrutto && geparsterBetrag != null && geparsterBetrag > 0
+      ? bewirtungAbziehbarCents(geparsterBetrag)
+      : null;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -67,13 +80,15 @@ export function BuchungForm({
     }
     let serverErrors: Record<string, string> | null = null;
     try {
+      const brutto = erfasstBrutto ? cent! : undefined;
       serverErrors = await onSubmit({
         typ,
         bezeichnung: bezeichnung.trim(),
         kategorieId: kategorieId!,
         konto: konto.trim(),
         datum,
-        betragCent: cent!,
+        betragCent: brutto != null ? bewirtungAbziehbarCents(brutto) : cent!,
+        bruttoCent: brutto,
       });
     } catch {
       setErrors({ bezeichnung: "Die Buchung konnte nicht gespeichert werden." });
@@ -192,7 +207,16 @@ export function BuchungForm({
               />
             )}
           </Field>
-          <Field id={`${uid}-betrag`} label="Betrag in €" error={errors.betrag}>
+          <Field
+            id={`${uid}-betrag`}
+            label={erfasstBrutto ? "Bruttobetrag in €" : "Betrag in €"}
+            error={errors.betrag}
+            hint={
+              abziehbar != null && abziehbar > 0
+                ? `Erfasst werden 70 %: ${formatEuro(abziehbar)}`
+                : undefined
+            }
+          >
             {(field) => (
               <Input
                 {...field}
@@ -242,11 +266,13 @@ function Field({
   id,
   label,
   error,
+  hint,
   children,
 }: {
   id: string;
   label: string;
   error?: string;
+  hint?: string;
   children: (field: {
     id: string;
     "aria-invalid": boolean;
@@ -254,14 +280,23 @@ function Field({
   }) => React.ReactNode;
 }) {
   const errorId = `${id}-error`;
+  const hintId = `${id}-hint`;
+  const describedBy = [hint ? hintId : null, error ? errorId : null]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div className="grid content-start gap-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children({
         id,
         "aria-invalid": Boolean(error),
-        "aria-describedby": error ? errorId : undefined,
+        "aria-describedby": describedBy || undefined,
       })}
+      {hint && (
+        <p id={hintId} data-privacy="strong" className="text-xs text-muted-foreground">
+          {hint}
+        </p>
+      )}
       {error && (
         <p id={errorId} role="alert" className="text-xs text-destructive">
           {error}

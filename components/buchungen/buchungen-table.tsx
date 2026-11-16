@@ -124,7 +124,15 @@ export function BuchungenTable({
               <td data-privacy="strong" className="num px-3 text-right">
                 {b.typ === "einnahme" && formatEuro(b.betragCent)}
               </td>
-              <td data-privacy="strong" className="num px-3 text-right">
+              <td
+                data-privacy="strong"
+                className="num px-3 text-right"
+                title={
+                  b.typ === "ausgabe" && b.bruttoCent != null
+                    ? `70 % von ${formatEuro(b.bruttoCent)}`
+                    : undefined
+                }
+              >
                 {b.typ === "ausgabe" && formatEuro(b.betragCent)}
               </td>
               <td className="px-2">

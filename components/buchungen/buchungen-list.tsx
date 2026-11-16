@@ -1,7 +1,7 @@
 "use client";
 
 import { getKategorie } from "@/lib/categories";
-import { formatDatum, formatEuroSigned } from "@/lib/format";
+import { formatDatum, formatEuro, formatEuroSigned } from "@/lib/format";
 import type { Buchung } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +39,11 @@ export function BuchungenList({
               </span>
               <span
                 data-privacy="strong"
+                title={
+                  !einnahme && b.bruttoCent != null
+                    ? `70 % von ${formatEuro(b.bruttoCent)}`
+                    : undefined
+                }
                 className={cn(
                   "num shrink-0 text-sm",
                   einnahme ? "font-medium" : "text-muted-foreground",

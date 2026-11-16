@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ACCOUNTING_CATEGORIES } from "./categories";
 import { isValidIsoDate } from "./dates";
-import { parseBetrag } from "./money";
+import { bewirtungAbziehbarCents, parseBetrag } from "./money";
 
 export const USER_ERROR = {
   unauthorized: "Nicht angemeldet.",
@@ -36,8 +36,27 @@ export const buchungInputSchema = z
     datum: isoDateSchema,
     typ: z.enum(["einnahme", "ausgabe"]),
     betragCent: centsSchema.positive("Betrag muss größer als 0 sein."),
+    bruttoCent: centsSchema.positive("Bruttobetrag muss größer als 0 sein.").optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.bruttoCent == null) return;
+    if (value.kategorieId !== "Bewirtungskosten" || value.typ !== "ausgabe") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["bruttoCent"],
+        message: "Der Bruttobetrag gilt nur für Bewirtungskosten.",
+      });
+      return;
+    }
+    if (bewirtungAbziehbarCents(value.bruttoCent) <= 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["betragCent"],
+        message: "70 % des Bruttobetrags müssen größer als 0 sein.",
+      });
+    }
+  });
 
 export const transactionAmountsSchema = z
   .object({

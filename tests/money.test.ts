@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { bigintToCents, parseBetrag, profitCents } from "@/lib/money";
+import {
+  bewirtungAbziehbarCents,
+  bigintToCents,
+  parseBetrag,
+  profitCents,
+} from "@/lib/money";
 
 describe("monetary calculations", () => {
   it("computes profit with integer arithmetic", () => {
@@ -24,6 +29,12 @@ describe("monetary calculations", () => {
     expect(parseBetrag("12,3,4")).toBeNull();
     expect(parseBetrag("-10")).toBeNull();
     expect(parseBetrag("abc")).toBeNull();
+  });
+
+  it("books 70 percent of Bewirtungskosten, rounded half-up", () => {
+    expect(bewirtungAbziehbarCents(10_000)).toBe(7_000);
+    expect(bewirtungAbziehbarCents(333)).toBe(233);
+    expect(bewirtungAbziehbarCents(1)).toBe(1);
   });
 
   it("converts bigint amounts safely", () => {

@@ -39,4 +39,30 @@ describe("CRUD mapping", () => {
     expect(db.incomeCents).toBe(120000n);
     expect(db.expenseCents).toBe(0n);
   });
+
+  it("stores 70 percent of a Bewirtungskosten gross amount", () => {
+    const db = inputToDb({
+      typ: "ausgabe",
+      kategorieId: "Bewirtungskosten",
+      konto: "4650",
+      bezeichnung: "Geschäftsessen",
+      datum: "2026-03-05",
+      betragCent: 7000,
+      bruttoCent: 10000,
+    });
+    expect(db.expenseCents).toBe(7000n);
+    expect(db.grossCents).toBe(10000n);
+    const buchung = toBuchung({
+      id: "22222222-2222-4222-8222-222222222222",
+      category: db.category,
+      account: db.account,
+      description: db.description,
+      date: db.date,
+      incomeCents: db.incomeCents,
+      expenseCents: db.expenseCents,
+      grossCents: db.grossCents,
+    });
+    expect(buchung.betragCent).toBe(7000);
+    expect(buchung.bruttoCent).toBe(10000);
+  });
 });

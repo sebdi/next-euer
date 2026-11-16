@@ -2,7 +2,12 @@ import type { Prisma } from "@prisma/client";
 import { getPrisma } from "./prisma";
 import { defaultAccountForCategory } from "./categories";
 import { isoDateToUtc, utcDateToIso, yearDateRange } from "./dates";
-import { bigintToCents, centsToBigInt, profitCents } from "./money";
+import {
+  bewirtungAbziehbarCents,
+  bigintToCents,
+  centsToBigInt,
+  profitCents,
+} from "./money";
 import type { Buchung, BuchungInput, YearTotals } from "./types";
 import type { CsvRowParsed } from "./validation";
 import { fingerprintRow } from "./csv";
@@ -15,10 +20,13 @@ export function toBuchung(row: {
   date: Date;
   incomeCents: bigint;
   expenseCents: bigint;
+  grossCents?: bigint | null;
 }): Buchung {
   const income = bigintToCents(row.incomeCents);
   const expense = bigintToCents(row.expenseCents);
   const einnahme = income > 0;
+  const brutto =
+    row.grossCents == null ? undefined : bigintToCents(row.grossCents);
   return {
     id: row.id,
     typ: einnahme ? "einnahme" : "ausgabe",
@@ -27,12 +35,21 @@ export function toBuchung(row: {
     bezeichnung: row.description,
     datum: utcDateToIso(row.date),
     betragCent: einnahme ? income : expense,
+    bruttoCent: brutto,
   };
 }
 
 export function inputToDb(input: BuchungInput) {
-  const incomeCents = input.typ === "einnahme" ? input.betragCent : 0;
-  const expenseCents = input.typ === "ausgabe" ? input.betragCent : 0;
+  const bewirtung =
+    input.kategorieId === "Bewirtungskosten" &&
+    input.typ === "ausgabe" &&
+    input.bruttoCent != null;
+  const incomeCents = !bewirtung && input.typ === "einnahme" ? input.betragCent : 0;
+  const expenseCents = bewirtung
+    ? bewirtungAbziehbarCents(input.bruttoCent!)
+    : input.typ === "ausgabe"
+      ? input.betragCent
+      : 0;
   return {
     category: input.kategorieId,
     account: input.konto.trim() || defaultAccountForCategory(input.kategorieId),
@@ -40,6 +57,7 @@ export function inputToDb(input: BuchungInput) {
     date: isoDateToUtc(input.datum),
     incomeCents: centsToBigInt(incomeCents),
     expenseCents: centsToBigInt(expenseCents),
+    grossCents: bewirtung ? centsToBigInt(input.bruttoCent!) : null,
   };
 }
 

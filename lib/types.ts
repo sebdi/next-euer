@@ -17,8 +17,10 @@ export interface Buchung {
   bezeichnung: string;
   /** ISO-Datum, JJJJ-MM-TT */
   datum: string;
-  /** Betrag in Cent, immer positiv */
+  /** Erfasster Betrag in Cent, immer positiv. Bei Bewirtung die abziehbaren 70 %. */
   betragCent: number;
+  /** Bruttobetrag in Cent, nur bei Bewirtungskosten mit 70-%-Ansatz */
+  bruttoCent?: number;
 }
 
 export type BuchungInput = Omit<Buchung, "id">;

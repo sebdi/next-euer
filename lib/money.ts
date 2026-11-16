@@ -66,6 +66,15 @@ export function parseBetrag(raw: string): number | null {
   }
 }
 
+/** 70 % of a gross cent amount, half-up, integer cents only. */
+export function bewirtungAbziehbarCents(bruttoCent: number): number {
+  if (!Number.isInteger(bruttoCent) || bruttoCent < 0) {
+    throw new RangeError("Invalid gross amount.");
+  }
+  const booked = (BigInt(bruttoCent) * 70n + 50n) / 100n;
+  return bigintToCents(booked);
+}
+
 export function formatCentsGerman(cents: number): string {
   const sign = cents < 0 ? "-" : "";
   const abs = cents < 0 ? -cents : cents;
