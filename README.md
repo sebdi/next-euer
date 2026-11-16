@@ -107,6 +107,10 @@ Any other GitHub account is rejected. If the variable is missing or not a number
 | `GITHUB_ALLOWED_USER_ID` | Numeric GitHub user ID allowed to use this instance |
 | `AUTH_SECRET` | Session cookie signing secret (`openssl rand -base64 32`) |
 | `AUTH_URL` | Optional public origin if Auth.js cannot infer it |
+| `DISTANCE_PROVIDER` | Optional distance backend. Default: `heigit` |
+| `HEIGIT_API_KEY` | API key for the HeiGIT openrouteservice endpoint (`api.heigit.org`) |
+
+Fahrtkosten can calculate a driving distance from start and destination. The calculation goes through `DistanceProvider` in `lib/distance`, so another routing service can be added without changing the form. The built-in provider geocodes both addresses and requests a `driving-car` route from [HeiGIT](https://api.heigit.org/). The default allowance is 0,30 €/km and can be changed per booking. Create a free key in the HeiGIT account dashboard and set `HEIGIT_API_KEY`. The key stays on the server.
 
 See `.env.example` for comments. Never commit real secrets or financial data.
 

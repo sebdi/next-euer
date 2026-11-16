@@ -37,9 +37,37 @@ export const buchungInputSchema = z
     typ: z.enum(["einnahme", "ausgabe"]),
     betragCent: centsSchema.positive("Betrag muss größer als 0 sein."),
     bruttoCent: centsSchema.positive("Bruttobetrag muss größer als 0 sein.").optional(),
+    routeOrigin: z.string().trim().min(1).max(200).optional(),
+    routeDestination: z.string().trim().min(1).max(200).optional(),
+    distanceMeters: z.number().int().positive().max(2_000_000_000).optional(),
+    rateCentsPerKm: z.number().int().positive().max(100_000).optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
+    const routeParts = [
+      value.routeOrigin,
+      value.routeDestination,
+      value.distanceMeters,
+      value.rateCentsPerKm,
+    ];
+    const routeCount = routeParts.filter((part) => part != null).length;
+    if (routeCount > 0 && routeCount < 4) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["routeOrigin"],
+        message: "Die Strecke ist unvollständig.",
+      });
+    }
+    if (
+      routeCount === 4 &&
+      (value.kategorieId !== "Fahrtkosten" || value.typ !== "ausgabe")
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["routeOrigin"],
+        message: "Die Strecke gilt nur für Fahrtkosten.",
+      });
+    }
     if (value.bruttoCent == null) return;
     if (value.kategorieId !== "Bewirtungskosten" || value.typ !== "ausgabe") {
       ctx.addIssue({
@@ -68,6 +96,28 @@ export const transactionAmountsSchema = z
       (v.incomeCents > 0 && v.expenseCents === 0) ||
       (v.expenseCents > 0 && v.incomeCents === 0),
     "Eine Buchung muss entweder Einnahme oder Ausgabe sein.",
+  );
+
+export const routeQuerySchema = z
+  .object({
+    origin: z.string().trim().min(2, "Start fehlt.").max(200, "Start ist zu lang."),
+    destination: z
+      .string()
+      .trim()
+      .min(2, "Ziel fehlt.")
+      .max(200, "Ziel ist zu lang."),
+    rateCentsPerKm: z
+      .number()
+      .int()
+      .positive("Kilometerpauschale muss größer als 0 sein.")
+      .max(100_000, "Kilometerpauschale ist zu hoch."),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      value.origin.toLocaleLowerCase("de") !==
+      value.destination.toLocaleLowerCase("de"),
+    { path: ["destination"], message: "Start und Ziel müssen sich unterscheiden." },
   );
 
 export const transactionIdSchema = z.uuid("Ungültige Buchung.");

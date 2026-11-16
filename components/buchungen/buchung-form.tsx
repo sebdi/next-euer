@@ -11,13 +11,48 @@ import {
   defaultTypForCategory,
   getKategorie,
 } from "@/lib/categories";
+import { calculateRouteAction } from "@/app/actions/route";
+import {
+  DEFAULT_KM_RATE_CENTS,
+  fahrtkostenCents,
+  formatKilometers,
+} from "@/lib/distance/fare";
 import { centToInput, formatEuro, heuteIso, parseBetrag } from "@/lib/format";
 import { bewirtungAbziehbarCents } from "@/lib/money";
 import type { Buchung, BuchungInput, BuchungTyp } from "@/lib/types";
 
 type Errors = Partial<
-  Record<"bezeichnung" | "kategorie" | "datum" | "betrag" | "konto", string>
+  Record<"bezeichnung" | "kategorie" | "datum" | "betrag" | "konto" | "route" | "rate", string>
 >;
+
+type RouteQuote = {
+  origin: string;
+  destination: string;
+  rateCentsPerKm: number;
+  distanceMeters: number;
+  amountCents: number;
+};
+
+function initialQuote(buchung?: Buchung): RouteQuote | null {
+  if (
+    !buchung?.routeOrigin ||
+    !buchung.routeDestination ||
+    buchung.distanceMeters == null ||
+    buchung.rateCentsPerKm == null
+  ) {
+    return null;
+  }
+  return {
+    origin: buchung.routeOrigin,
+    destination: buchung.routeDestination,
+    rateCentsPerKm: buchung.rateCentsPerKm,
+    distanceMeters: buchung.distanceMeters,
+    amountCents: fahrtkostenCents(
+      buchung.distanceMeters,
+      buchung.rateCentsPerKm,
+    ),
+  };
+}
 
 export function BuchungForm({
   buchung,
@@ -43,6 +78,13 @@ export function BuchungForm({
   const [betrag, setBetrag] = useState(
     buchung ? centToInput(buchung.bruttoCent ?? buchung.betragCent) : "",
   );
+  const [routeFrom, setRouteFrom] = useState(buchung?.routeOrigin ?? "");
+  const [routeTo, setRouteTo] = useState(buchung?.routeDestination ?? "");
+  const [rate, setRate] = useState(
+    centToInput(buchung?.rateCentsPerKm ?? DEFAULT_KM_RATE_CENTS),
+  );
+  const [quote, setQuote] = useState<RouteQuote | null>(() => initialQuote(buchung));
+  const [calculating, setCalculating] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
 
   const clear = (key: keyof Errors) =>
@@ -55,6 +97,17 @@ export function BuchungForm({
       buchung.kategorieId !== "Bewirtungskosten" ||
       buchung.bruttoCent != null);
   const geparsterBetrag = parseBetrag(betrag);
+  const rateCents = parseBetrag(rate);
+  const fahrtkosten =
+    kategorieId === "Fahrtkosten" && typ === "ausgabe";
+  const activeQuote =
+    fahrtkosten &&
+    quote &&
+    quote.origin === routeFrom.trim() &&
+    quote.destination === routeTo.trim() &&
+    rateCents === quote.rateCentsPerKm
+      ? quote
+      : null;
   const abziehbar =
     erfasstBrutto && geparsterBetrag != null && geparsterBetrag > 0
       ? bewirtungAbziehbarCents(geparsterBetrag)
@@ -89,6 +142,14 @@ export function BuchungForm({
         datum,
         betragCent: brutto != null ? bewirtungAbziehbarCents(brutto) : cent!,
         bruttoCent: brutto,
+        ...(activeQuote
+          ? {
+              routeOrigin: activeQuote.origin,
+              routeDestination: activeQuote.destination,
+              distanceMeters: activeQuote.distanceMeters,
+              rateCentsPerKm: activeQuote.rateCentsPerKm,
+            }
+          : {}),
       });
     } catch {
       setErrors({ bezeichnung: "Die Buchung konnte nicht gespeichert werden." });
@@ -172,6 +233,137 @@ export function BuchungForm({
             />
           )}
         </Field>
+
+        {fahrtkosten && (
+          <div className="grid gap-3 rounded-md border bg-surface p-3">
+            <Field id={`${uid}-start`} label="Start" error={errors.route}>
+              {(field) => (
+                <Input
+                  {...field}
+                  data-privacy
+                  value={routeFrom}
+                  onChange={(e) => {
+                    setRouteFrom(e.target.value);
+                    clear("route");
+                  }}
+                  placeholder="z. B. Heidelberg, Hauptstraße 1"
+                  autoComplete="off"
+                  disabled={pending || calculating}
+                />
+              )}
+            </Field>
+            <Field id={`${uid}-ziel`} label="Ziel">
+              {(field) => (
+                <Input
+                  {...field}
+                  data-privacy
+                  value={routeTo}
+                  onChange={(e) => {
+                    setRouteTo(e.target.value);
+                    clear("route");
+                  }}
+                  placeholder="z. B. Stuttgart Hbf"
+                  autoComplete="off"
+                  disabled={pending || calculating}
+                />
+              )}
+            </Field>
+            <div className="flex items-end gap-2">
+              <Field
+                id={`${uid}-rate`}
+                label="Pauschale €/km"
+                error={errors.rate}
+                className="min-w-0 flex-1"
+              >
+                {(field) => (
+                  <Input
+                    {...field}
+                    data-privacy="strong"
+                    value={rate}
+                    onChange={(e) => {
+                      setRate(e.target.value);
+                      clear("rate");
+                    }}
+                    onBlur={() => {
+                      const cent = parseBetrag(rate);
+                      if (cent !== null) setRate(centToInput(cent));
+                    }}
+                    inputMode="decimal"
+                    placeholder="0,30"
+                    autoComplete="off"
+                    className="num text-right"
+                    disabled={pending || calculating}
+                  />
+                )}
+              </Field>
+              <Button
+                type="button"
+                className="mb-px shrink-0"
+                disabled={pending || calculating || !routeFrom.trim() || !routeTo.trim()}
+                onClick={() => {
+                  void (async () => {
+                    const cents = rate.trim()
+                      ? parseBetrag(rate)
+                      : DEFAULT_KM_RATE_CENTS;
+                    if (cents == null || cents <= 0) {
+                      setErrors((current) => ({
+                        ...current,
+                        rate: "Pauschale wie 0,30 eingeben.",
+                      }));
+                      return;
+                    }
+                    setCalculating(true);
+                    try {
+                      const result = await calculateRouteAction({
+                        origin: routeFrom,
+                        destination: routeTo,
+                        rateCentsPerKm: cents,
+                      });
+                      if (!result.ok) {
+                        setErrors((current) => ({
+                          ...current,
+                          route:
+                            result.fieldErrors?.origin ??
+                            result.fieldErrors?.destination ??
+                            result.error,
+                          rate: result.fieldErrors?.rateCentsPerKm,
+                        }));
+                        return;
+                      }
+                      setQuote({
+                        origin: routeFrom.trim(),
+                        destination: routeTo.trim(),
+                        rateCentsPerKm: result.data.rateCentsPerKm,
+                        distanceMeters: result.data.distanceMeters,
+                        amountCents: result.data.amountCents,
+                      });
+                      setBetrag(centToInput(result.data.amountCents));
+                      clear("betrag");
+                      clear("route");
+                      clear("rate");
+                    } catch {
+                      setErrors((current) => ({
+                        ...current,
+                        route: "Die Entfernung konnte nicht berechnet werden.",
+                      }));
+                    } finally {
+                      setCalculating(false);
+                    }
+                  })();
+                }}
+              >
+                {calculating ? "Berechne…" : "Berechnen"}
+              </Button>
+            </div>
+            {activeQuote && (
+              <p data-privacy="strong" className="text-xs text-muted-foreground">
+                {formatKilometers(activeQuote.distanceMeters)} ×{" "}
+                {formatEuro(activeQuote.rateCentsPerKm)}/km ={" "}
+                {formatEuro(activeQuote.amountCents)}
+              </p>
+            )}
+          </div>
+        )}
 
         <Field id={`${uid}-konto`} label="Konto" error={errors.konto}>
           {(field) => (
@@ -267,12 +459,14 @@ function Field({
   label,
   error,
   hint,
+  className,
   children,
 }: {
   id: string;
   label: string;
   error?: string;
   hint?: string;
+  className?: string;
   children: (field: {
     id: string;
     "aria-invalid": boolean;
@@ -285,7 +479,7 @@ function Field({
     .filter(Boolean)
     .join(" ");
   return (
-    <div className="grid content-start gap-1.5">
+    <div className={`grid content-start gap-1.5 ${className ?? ""}`}>
       <Label htmlFor={id}>{label}</Label>
       {children({
         id,

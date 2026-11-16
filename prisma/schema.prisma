@@ -16,9 +16,13 @@ model Transaction {
   incomeCents  BigInt   @default(0)
   expenseCents BigInt   @default(0)
   /// Original gross amount when only 70% of Bewirtungskosten is booked.
-  grossCents   BigInt?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  grossCents       BigInt?
+  routeOrigin      String?
+  routeDestination String?
+  distanceMeters   Int?
+  rateCentsPerKm   Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@index([date])
   @@index([category])

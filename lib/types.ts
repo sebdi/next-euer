@@ -21,6 +21,10 @@ export interface Buchung {
   betragCent: number;
   /** Bruttobetrag in Cent, nur bei Bewirtungskosten mit 70-%-Ansatz */
   bruttoCent?: number;
+  routeOrigin?: string;
+  routeDestination?: string;
+  distanceMeters?: number;
+  rateCentsPerKm?: number;
 }
 
 export type BuchungInput = Omit<Buchung, "id">;

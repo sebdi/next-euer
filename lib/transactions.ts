@@ -21,6 +21,10 @@ export function toBuchung(row: {
   incomeCents: bigint;
   expenseCents: bigint;
   grossCents?: bigint | null;
+  routeOrigin?: string | null;
+  routeDestination?: string | null;
+  distanceMeters?: number | null;
+  rateCentsPerKm?: number | null;
 }): Buchung {
   const income = bigintToCents(row.incomeCents);
   const expense = bigintToCents(row.expenseCents);
@@ -36,6 +40,10 @@ export function toBuchung(row: {
     datum: utcDateToIso(row.date),
     betragCent: einnahme ? income : expense,
     bruttoCent: brutto,
+    routeOrigin: row.routeOrigin ?? undefined,
+    routeDestination: row.routeDestination ?? undefined,
+    distanceMeters: row.distanceMeters ?? undefined,
+    rateCentsPerKm: row.rateCentsPerKm ?? undefined,
   };
 }
 
@@ -58,6 +66,31 @@ export function inputToDb(input: BuchungInput) {
     incomeCents: centsToBigInt(incomeCents),
     expenseCents: centsToBigInt(expenseCents),
     grossCents: bewirtung ? centsToBigInt(input.bruttoCent!) : null,
+    ...routeColumns(input),
+  };
+}
+
+function routeColumns(input: BuchungInput) {
+  const complete =
+    input.kategorieId === "Fahrtkosten" &&
+    input.typ === "ausgabe" &&
+    input.routeOrigin &&
+    input.routeDestination &&
+    input.distanceMeters != null &&
+    input.rateCentsPerKm != null;
+  if (!complete) {
+    return {
+      routeOrigin: null,
+      routeDestination: null,
+      distanceMeters: null,
+      rateCentsPerKm: null,
+    };
+  }
+  return {
+    routeOrigin: input.routeOrigin,
+    routeDestination: input.routeDestination,
+    distanceMeters: input.distanceMeters,
+    rateCentsPerKm: input.rateCentsPerKm,
   };
 }
 
