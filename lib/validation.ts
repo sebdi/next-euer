@@ -41,6 +41,7 @@ export const buchungInputSchema = z
     routeDestination: z.string().trim().min(1).max(200).optional(),
     distanceMeters: z.number().int().positive().max(2_000_000_000).optional(),
     rateCentsPerKm: z.number().int().positive().max(100_000).optional(),
+    roundTrip: z.boolean().optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -51,6 +52,13 @@ export const buchungInputSchema = z
       value.rateCentsPerKm,
     ];
     const routeCount = routeParts.filter((part) => part != null).length;
+    if (value.roundTrip && routeCount !== 4) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["roundTrip"],
+        message: "Hin- und Rückfahrt braucht eine berechnete Strecke.",
+      });
+    }
     if (routeCount > 0 && routeCount < 4) {
       ctx.addIssue({
         code: "custom",
@@ -111,6 +119,7 @@ export const routeQuerySchema = z
       .int()
       .positive("Kilometerpauschale muss größer als 0 sein.")
       .max(100_000, "Kilometerpauschale ist zu hoch."),
+    roundTrip: z.boolean().optional().default(false),
   })
   .strict()
   .refine(
@@ -119,6 +128,19 @@ export const routeQuerySchema = z
       value.destination.toLocaleLowerCase("de"),
     { path: ["destination"], message: "Start und Ziel müssen sich unterscheiden." },
   );
+
+export const homeAddressSchema = z
+  .object({
+    address: z
+      .string()
+      .trim()
+      .max(200, "Die Adresse ist zu lang.")
+      .refine(
+        (value) => value.length === 0 || value.length >= 2,
+        "Adresse ist zu kurz.",
+      ),
+  })
+  .strict();
 
 export const transactionIdSchema = z.uuid("Ungültige Buchung.");
 

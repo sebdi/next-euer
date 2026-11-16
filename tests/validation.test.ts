@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { inputToDb } from "@/lib/transactions";
-import { buchungInputSchema, csvRowSchema } from "@/lib/validation";
+import { buchungInputSchema, csvRowSchema, homeAddressSchema } from "@/lib/validation";
 
 describe("transaction validation", () => {
   const valid = {
@@ -81,5 +81,21 @@ describe("transaction validation", () => {
       expenseCents: 0,
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("home address", () => {
+  it("stores a trimmed address and allows clearing it", () => {
+    expect(homeAddressSchema.parse({ address: "  Heidelberg  " }).address).toBe(
+      "Heidelberg",
+    );
+    expect(homeAddressSchema.parse({ address: "   " }).address).toBe("");
+  });
+
+  it("rejects an address that is too short or too long", () => {
+    expect(homeAddressSchema.safeParse({ address: "A" }).success).toBe(false);
+    expect(homeAddressSchema.safeParse({ address: "A".repeat(201) }).success).toBe(
+      false,
+    );
   });
 });

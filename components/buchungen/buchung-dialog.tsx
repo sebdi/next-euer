@@ -26,6 +26,7 @@ export function BuchungDialog({
   buchung,
   onSubmit,
   onDelete,
+  homeAddress,
 }: {
   open: boolean;
   pending?: boolean;
@@ -33,6 +34,7 @@ export function BuchungDialog({
   buchung?: Buchung;
   onSubmit: (input: BuchungInput) => Promise<Record<string, string> | null>;
   onDelete?: () => void;
+  homeAddress?: string | null;
 }) {
   const desktop = useMediaQuery("(min-width: 768px)");
   const title = buchung ? "Buchung bearbeiten" : "Neue Buchung";
@@ -45,6 +47,7 @@ export function BuchungDialog({
       key={buchung?.id ?? "neu"}
       buchung={buchung}
       pending={pending}
+      homeAddress={homeAddress}
       onSubmit={onSubmit}
       onCancel={() => onOpenChange(false)}
       onDelete={onDelete}

@@ -21,6 +21,8 @@ model Transaction {
   routeDestination String?
   distanceMeters   Int?
   rateCentsPerKm   Int?
+  /// True when the booked amount uses the route twice (return trip).
+  roundTrip        Boolean?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -28,4 +30,13 @@ model Transaction {
   @@index([category])
   @@index([date, category])
   @@map("transactions")
+}
+
+/// Settings for the single authorized GitHub account of this deployment.
+model Profile {
+  githubId    String   @id
+  homeAddress String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("profiles")
 }

@@ -17,11 +17,15 @@ export function Header({
   jahre,
   onJahrChange,
   user,
+  homeAddress,
+  onHomeAddressChange,
 }: {
   jahr: number;
   jahre: number[];
   onJahrChange: (jahr: number) => void;
   user: AppUser;
+  homeAddress: string | null;
+  onHomeAddressChange: (homeAddress: string | null) => void;
 }) {
   return (
     <header className="border-b bg-background">
@@ -54,7 +58,11 @@ export function Header({
         <div className="ml-auto flex items-center gap-3">
           <PrivacyToggle />
           <ThemeSwitcher />
-          <UserMenu user={user} />
+          <UserMenu
+            user={user}
+            homeAddress={homeAddress}
+            onHomeAddressChange={onHomeAddressChange}
+          />
         </div>
       </div>
     </header>

@@ -2,6 +2,8 @@
 
 import { useId, useState } from "react";
 import { RadioGroup } from "radix-ui";
+import { House } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +18,7 @@ import {
   DEFAULT_KM_RATE_CENTS,
   fahrtkostenCents,
   formatKilometers,
+  tripDistanceMeters,
 } from "@/lib/distance/fare";
 import { centToInput, formatEuro, heuteIso, parseBetrag } from "@/lib/format";
 import { bewirtungAbziehbarCents } from "@/lib/money";
@@ -30,8 +33,14 @@ type RouteQuote = {
   destination: string;
   rateCentsPerKm: number;
   distanceMeters: number;
-  amountCents: number;
 };
+
+function routeAmount(quote: RouteQuote, roundTrip: boolean): number {
+  return fahrtkostenCents(
+    tripDistanceMeters(quote.distanceMeters, roundTrip),
+    quote.rateCentsPerKm,
+  );
+}
 
 function initialQuote(buchung?: Buchung): RouteQuote | null {
   if (
@@ -47,10 +56,6 @@ function initialQuote(buchung?: Buchung): RouteQuote | null {
     destination: buchung.routeDestination,
     rateCentsPerKm: buchung.rateCentsPerKm,
     distanceMeters: buchung.distanceMeters,
-    amountCents: fahrtkostenCents(
-      buchung.distanceMeters,
-      buchung.rateCentsPerKm,
-    ),
   };
 }
 
@@ -60,12 +65,14 @@ export function BuchungForm({
   onSubmit,
   onCancel,
   onDelete,
+  homeAddress,
 }: {
   buchung?: Buchung;
   pending?: boolean;
   onSubmit: (input: BuchungInput) => Promise<Record<string, string> | null>;
   onCancel: () => void;
   onDelete?: () => void;
+  homeAddress?: string | null;
 }) {
   const uid = useId();
   const [typ, setTyp] = useState<BuchungTyp>(buchung?.typ ?? "ausgabe");
@@ -84,11 +91,22 @@ export function BuchungForm({
     centToInput(buchung?.rateCentsPerKm ?? DEFAULT_KM_RATE_CENTS),
   );
   const [quote, setQuote] = useState<RouteQuote | null>(() => initialQuote(buchung));
+  const [roundTrip, setRoundTrip] = useState(buchung?.roundTrip === true);
   const [calculating, setCalculating] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
 
   const clear = (key: keyof Errors) =>
     setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
+
+  const fillHome = (target: "from" | "to") => {
+    if (!homeAddress) {
+      toast.error("Wohnadresse fehlt. Lege sie unter Einstellungen an.");
+      return;
+    }
+    if (target === "from") setRouteFrom(homeAddress);
+    else setRouteTo(homeAddress);
+    clear("route");
+  };
 
   const erfasstBrutto =
     kategorieId === "Bewirtungskosten" &&
@@ -148,6 +166,7 @@ export function BuchungForm({
               routeDestination: activeQuote.destination,
               distanceMeters: activeQuote.distanceMeters,
               rateCentsPerKm: activeQuote.rateCentsPerKm,
+              roundTrip,
             }
           : {}),
       });
@@ -238,36 +257,75 @@ export function BuchungForm({
           <div className="grid gap-3 rounded-md border bg-surface p-3">
             <Field id={`${uid}-start`} label="Start" error={errors.route}>
               {(field) => (
-                <Input
-                  {...field}
-                  data-privacy
-                  value={routeFrom}
-                  onChange={(e) => {
-                    setRouteFrom(e.target.value);
-                    clear("route");
-                  }}
-                  placeholder="z. B. Heidelberg, Hauptstraße 1"
-                  autoComplete="off"
-                  disabled={pending || calculating}
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    {...field}
+                    className="flex-1"
+                    data-privacy
+                    value={routeFrom}
+                    onChange={(e) => {
+                      setRouteFrom(e.target.value);
+                      clear("route");
+                    }}
+                    placeholder="z. B. Heidelberg, Hauptstraße 1"
+                    autoComplete="off"
+                    disabled={pending || calculating}
+                  />
+                  <Button
+                    type="button"
+                    className="shrink-0"
+                    disabled={pending || calculating}
+                    onClick={() => fillHome("from")}
+                  >
+                    <House /> Zuhause
+                  </Button>
+                </div>
               )}
             </Field>
             <Field id={`${uid}-ziel`} label="Ziel">
               {(field) => (
-                <Input
-                  {...field}
-                  data-privacy
-                  value={routeTo}
-                  onChange={(e) => {
-                    setRouteTo(e.target.value);
-                    clear("route");
-                  }}
-                  placeholder="z. B. Stuttgart Hbf"
-                  autoComplete="off"
-                  disabled={pending || calculating}
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    {...field}
+                    className="flex-1"
+                    data-privacy
+                    value={routeTo}
+                    onChange={(e) => {
+                      setRouteTo(e.target.value);
+                      clear("route");
+                    }}
+                    placeholder="z. B. Stuttgart Hbf"
+                    autoComplete="off"
+                    disabled={pending || calculating}
+                  />
+                  <Button
+                    type="button"
+                    className="shrink-0"
+                    disabled={pending || calculating}
+                    onClick={() => fillHome("to")}
+                  >
+                    <House /> Zuhause
+                  </Button>
+                </div>
               )}
             </Field>
+            <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={roundTrip}
+                disabled={pending || calculating}
+                onChange={(event) => {
+                  const next = event.target.checked;
+                  setRoundTrip(next);
+                  if (activeQuote) {
+                    setBetrag(centToInput(routeAmount(activeQuote, next)));
+                    clear("betrag");
+                  }
+                }}
+                className="size-3.5 accent-foreground"
+              />
+              Hin und zurück
+            </label>
             <div className="flex items-end gap-2">
               <Field
                 id={`${uid}-rate`}
@@ -318,6 +376,7 @@ export function BuchungForm({
                         origin: routeFrom,
                         destination: routeTo,
                         rateCentsPerKm: cents,
+                        roundTrip,
                       });
                       if (!result.ok) {
                         setErrors((current) => ({
@@ -335,7 +394,6 @@ export function BuchungForm({
                         destination: routeTo.trim(),
                         rateCentsPerKm: result.data.rateCentsPerKm,
                         distanceMeters: result.data.distanceMeters,
-                        amountCents: result.data.amountCents,
                       });
                       setBetrag(centToInput(result.data.amountCents));
                       clear("betrag");
@@ -357,9 +415,9 @@ export function BuchungForm({
             </div>
             {activeQuote && (
               <p data-privacy="strong" className="text-xs text-muted-foreground">
-                {formatKilometers(activeQuote.distanceMeters)} ×{" "}
-                {formatEuro(activeQuote.rateCentsPerKm)}/km ={" "}
-                {formatEuro(activeQuote.amountCents)}
+                {formatKilometers(activeQuote.distanceMeters)}
+                {roundTrip ? " × 2" : ""} × {formatEuro(activeQuote.rateCentsPerKm)}
+                /km = {formatEuro(routeAmount(activeQuote, roundTrip))}
               </p>
             )}
           </div>

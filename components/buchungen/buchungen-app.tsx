@@ -60,6 +60,7 @@ export function BuchungenApp({
   buchungen,
   totals,
   loadError,
+  homeAddress: initialHomeAddress,
 }: {
   user: AppUser;
   jahr: number;
@@ -67,6 +68,7 @@ export function BuchungenApp({
   buchungen: Buchung[];
   totals: YearTotals;
   loadError: string | null;
+  homeAddress: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -78,6 +80,7 @@ export function BuchungenApp({
   });
   const [toDelete, setToDelete] = useState<Buchung | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [homeAddress, setHomeAddress] = useState(initialHomeAddress);
   const [importing, setImporting] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -204,6 +207,8 @@ export function BuchungenApp({
         jahre={jahre}
         onJahrChange={setJahr}
         user={user}
+        homeAddress={homeAddress}
+        onHomeAddressChange={setHomeAddress}
       />
 
       <main className="mx-auto max-w-6xl px-4 pt-6 pb-16 md:px-6 md:pt-8">
@@ -327,6 +332,7 @@ export function BuchungenApp({
         onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
         buchung={dialog.buchung}
         onSubmit={handleSubmit}
+        homeAddress={homeAddress}
         onDelete={
           dialog.buchung ? () => setToDelete(dialog.buchung ?? null) : undefined
         }

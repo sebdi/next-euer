@@ -3,13 +3,14 @@
 import { getAuthorizedUser } from "@/lib/auth/session";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { getDistanceProvider, DistanceProviderError } from "@/lib/distance";
-import { fahrtkostenCents } from "@/lib/distance/fare";
+import { fahrtkostenCents, tripDistanceMeters } from "@/lib/distance/fare";
 import { USER_ERROR, fieldErrorsFromZod, routeQuerySchema } from "@/lib/validation";
 
 export async function calculateRouteAction(input: {
   origin: string;
   destination: string;
   rateCentsPerKm: number;
+  roundTrip?: boolean;
 }): Promise<
   ActionResult<{
     distanceMeters: number;
@@ -17,6 +18,7 @@ export async function calculateRouteAction(input: {
     originLabel: string;
     destinationLabel: string;
     rateCentsPerKm: number;
+    roundTrip: boolean;
   }>
 > {
   const user = await getAuthorizedUser();
@@ -32,8 +34,9 @@ export async function calculateRouteAction(input: {
       origin: parsed.data.origin,
       destination: parsed.data.destination,
     });
+    const roundTrip = parsed.data.roundTrip;
     const amountCents = fahrtkostenCents(
-      quote.distanceMeters,
+      tripDistanceMeters(quote.distanceMeters, roundTrip),
       parsed.data.rateCentsPerKm,
     );
     return {
@@ -44,6 +47,7 @@ export async function calculateRouteAction(input: {
         originLabel: quote.originLabel,
         destinationLabel: quote.destinationLabel,
         rateCentsPerKm: parsed.data.rateCentsPerKm,
+        roundTrip,
       },
     };
   } catch (error) {

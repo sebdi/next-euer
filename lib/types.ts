@@ -25,6 +25,8 @@ export interface Buchung {
   routeDestination?: string;
   distanceMeters?: number;
   rateCentsPerKm?: number;
+  /** Hin- und Rückfahrt: die einfache Strecke wird doppelt angesetzt */
+  roundTrip?: boolean;
 }
 
 export type BuchungInput = Omit<Buchung, "id">;

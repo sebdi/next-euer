@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Avatar } from "radix-ui";
 import { ExternalLink, LogOut, Settings } from "lucide-react";
 import { signOutAction } from "@/app/actions/auth";
+import { ProfileDialog } from "@/components/profile-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,16 +15,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { AppUser } from "@/lib/types";
 
-export function UserMenu({ user }: { user: AppUser }) {
+export function UserMenu({
+  user,
+  homeAddress,
+  onHomeAddressChange,
+}: {
+  user: AppUser;
+  homeAddress: string | null;
+  onHomeAddressChange: (homeAddress: string | null) => void;
+}) {
   const initials = (user.name || user.login || "N")
     .slice(0, 2)
     .toUpperCase();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const githubHref = user.login
     ? `https://github.com/${encodeURIComponent(user.login)}`
     : "https://github.com";
 
   return (
-    <DropdownMenu>
+    <>
+      <DropdownMenu>
       <DropdownMenuTrigger
         className="rounded-full transition-opacity hover:opacity-80"
         aria-label="Benutzermenü"
@@ -49,7 +61,7 @@ export function UserMenu({ user }: { user: AppUser }) {
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
+        <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
           <Settings /> Einstellungen
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
@@ -66,6 +78,13 @@ export function UserMenu({ user }: { user: AppUser }) {
           <LogOut /> Abmelden
         </DropdownMenuItem>
       </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenu>
+      <ProfileDialog
+        open={settingsOpen}
+        homeAddress={homeAddress}
+        onOpenChange={setSettingsOpen}
+        onSaved={onHomeAddressChange}
+      />
+    </>
   );
 }

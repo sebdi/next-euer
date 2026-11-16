@@ -1,6 +1,7 @@
 import { BuchungenApp } from "@/components/buchungen/buchungen-app";
 import { requireUser } from "@/lib/auth/session";
 import { parseYearParam } from "@/lib/dates";
+import { getHomeAddress } from "@/lib/profile";
 import {
   listTransactionsForYear,
   listYears,
@@ -22,6 +23,13 @@ export default async function Page({
   let jahre = [jahr];
   let totals = { incomeCents: 0, expenseCents: 0, profitCents: 0 };
   let loadError: string | null = null;
+  let homeAddress: string | null = null;
+
+  try {
+    homeAddress = await getHomeAddress(user.githubId);
+  } catch {
+    homeAddress = null;
+  }
 
   try {
     [buchungen, jahre, totals] = await Promise.all([
@@ -49,6 +57,7 @@ export default async function Page({
       buchungen={buchungen}
       totals={totals}
       loadError={loadError}
+      homeAddress={homeAddress}
     />
   );
 }

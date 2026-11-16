@@ -25,6 +25,7 @@ export function toBuchung(row: {
   routeDestination?: string | null;
   distanceMeters?: number | null;
   rateCentsPerKm?: number | null;
+  roundTrip?: boolean | null;
 }): Buchung {
   const income = bigintToCents(row.incomeCents);
   const expense = bigintToCents(row.expenseCents);
@@ -44,6 +45,7 @@ export function toBuchung(row: {
     routeDestination: row.routeDestination ?? undefined,
     distanceMeters: row.distanceMeters ?? undefined,
     rateCentsPerKm: row.rateCentsPerKm ?? undefined,
+    roundTrip: row.roundTrip ?? undefined,
   };
 }
 
@@ -84,6 +86,7 @@ function routeColumns(input: BuchungInput) {
       routeDestination: null,
       distanceMeters: null,
       rateCentsPerKm: null,
+      roundTrip: null,
     };
   }
   return {
@@ -91,6 +94,7 @@ function routeColumns(input: BuchungInput) {
     routeDestination: input.routeDestination,
     distanceMeters: input.distanceMeters,
     rateCentsPerKm: input.rateCentsPerKm,
+    roundTrip: input.roundTrip === true,
   };
 }
 

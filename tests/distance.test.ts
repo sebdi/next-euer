@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { getDistanceProvider } from "@/lib/distance";
-import { fahrtkostenCents, formatKilometers } from "@/lib/distance/fare";
+import {
+  fahrtkostenCents,
+  formatKilometers,
+  tripDistanceMeters,
+} from "@/lib/distance/fare";
 import {
   createHeigitProvider,
   parseDirectionsDistanceMeters,
@@ -12,6 +16,12 @@ describe("kilometre allowance", () => {
     expect(fahrtkostenCents(120_400, 30)).toBe(3_612);
     expect(fahrtkostenCents(84_320, 30)).toBe(2_530);
     expect(fahrtkostenCents(1_500, 30)).toBe(45);
+  });
+
+  it("doubles the one-way distance for a return trip", () => {
+    expect(tripDistanceMeters(84_320, false)).toBe(84_320);
+    expect(tripDistanceMeters(84_320, true)).toBe(168_640);
+    expect(fahrtkostenCents(tripDistanceMeters(120_400, true), 30)).toBe(7_224);
   });
 
   it("formats kilometres with a German decimal comma", () => {

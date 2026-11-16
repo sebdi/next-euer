@@ -3,6 +3,19 @@ import { bigintToCents } from "@/lib/money";
 /** German commuter allowance default: 0,30 € per kilometre. */
 export const DEFAULT_KM_RATE_CENTS = 30;
 
+/** One-way metres, or twice that for a return trip. */
+export function tripDistanceMeters(
+  oneWayMeters: number,
+  roundTrip: boolean,
+): number {
+  if (!Number.isInteger(oneWayMeters) || oneWayMeters <= 0) {
+    throw new RangeError("Invalid distance.");
+  }
+  const meters = roundTrip ? oneWayMeters * 2 : oneWayMeters;
+  if (!Number.isSafeInteger(meters)) throw new RangeError("Distance is too large.");
+  return meters;
+}
+
 /**
  * Kilometre allowance in integer cents.
  * `round(meters / 1000 * rateCents)`.
