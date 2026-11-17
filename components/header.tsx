@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Select,
   SelectContent,
@@ -17,23 +18,22 @@ export function Header({
   jahre,
   onJahrChange,
   user,
-  homeAddress,
-  onHomeAddressChange,
 }: {
   jahr: number;
   jahre: number[];
   onJahrChange: (jahr: number) => void;
   user: AppUser;
-  homeAddress: string | null;
-  onHomeAddressChange: (homeAddress: string | null) => void;
 }) {
   return (
     <header className="border-b bg-background">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 md:px-6">
-        <span className="text-[15px] tracking-tight select-none">
+        <Link
+          href={`/?jahr=${jahr}`}
+          className="text-[15px] tracking-tight select-none"
+        >
           <span className="font-medium">Next</span>
           <span className="font-semibold">EÜR</span>
-        </span>
+        </Link>
         <span className="text-lg font-light text-border-strong" aria-hidden>
           /
         </span>
@@ -58,11 +58,7 @@ export function Header({
         <div className="ml-auto flex items-center gap-3">
           <PrivacyToggle />
           <ThemeSwitcher />
-          <UserMenu
-            user={user}
-            homeAddress={homeAddress}
-            onHomeAddressChange={onHomeAddressChange}
-          />
+          <UserMenu user={user} jahr={jahr} />
         </div>
       </div>
     </header>

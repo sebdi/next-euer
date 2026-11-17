@@ -3,27 +3,41 @@
 import { revalidatePath } from "next/cache";
 import { getAuthorizedUser } from "@/lib/auth/session";
 import { actionError, type ActionResult } from "@/lib/action-result";
-import { saveHomeAddress } from "@/lib/profile";
-import { fieldErrorsFromZod, homeAddressSchema, USER_ERROR } from "@/lib/validation";
+import { saveUserProfile, type UserProfile } from "@/lib/profile";
+import { parseTaxRateInput } from "@/lib/tax";
+import {
+  fieldErrorsFromZod,
+  profileSettingsSchema,
+  USER_ERROR,
+} from "@/lib/validation";
 
-export async function saveHomeAddressAction(
-  address: string,
-): Promise<ActionResult<{ homeAddress: string | null }>> {
+export async function saveProfileAction(input: {
+  address: string;
+  taxRate: string;
+}): Promise<ActionResult<UserProfile>> {
   const user = await getAuthorizedUser();
   if (!user) return actionError(USER_ERROR.unauthorized);
 
-  const parsed = homeAddressSchema.safeParse({ address });
+  const parsed = profileSettingsSchema.safeParse(input);
   if (!parsed.success) {
     return actionError(USER_ERROR.validation, fieldErrorsFromZod(parsed.error));
   }
 
+  const rate = parseTaxRateInput(parsed.data.taxRate);
+  if (rate === "invalid") {
+    return actionError(USER_ERROR.validation, {
+      taxRate: "Grenzsteuersatz wie 42 oder 42,50 eingeben.",
+    });
+  }
+
   try {
-    const homeAddress = await saveHomeAddress(
-      user.githubId,
-      parsed.data.address.length === 0 ? null : parsed.data.address,
-    );
+    const profile = await saveUserProfile(user.githubId, {
+      homeAddress: parsed.data.address.length === 0 ? null : parsed.data.address,
+      marginalTaxRateBps: rate,
+    });
     revalidatePath("/");
-    return { ok: true, data: { homeAddress } };
+    revalidatePath("/profil");
+    return { ok: true, data: profile };
   } catch {
     return actionError(USER_ERROR.generic);
   }

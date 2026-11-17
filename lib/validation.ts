@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ACCOUNTING_CATEGORIES, isAccountingCategory } from "./categories";
 import { isValidIsoDate } from "./dates";
 import { bewirtungAbziehbarCents, parseBetrag } from "./money";
+import { parseTaxRateInput } from "./tax";
 
 export const USER_ERROR = {
   unauthorized: "Nicht angemeldet.",
@@ -149,18 +150,36 @@ export const routeQuerySchema = z
     { path: ["destination"], message: "Start und Ziel müssen sich unterscheiden." },
   );
 
+const addressField = z
+  .string()
+  .trim()
+  .max(200, "Die Adresse ist zu lang.")
+  .refine(
+    (value) => value.length === 0 || value.length >= 2,
+    "Adresse ist zu kurz.",
+  );
+
 export const homeAddressSchema = z
   .object({
-    address: z
-      .string()
-      .trim()
-      .max(200, "Die Adresse ist zu lang.")
-      .refine(
-        (value) => value.length === 0 || value.length >= 2,
-        "Adresse ist zu kurz.",
-      ),
+    address: addressField,
   })
   .strict();
+
+export const profileSettingsSchema = z
+  .object({
+    address: addressField,
+    taxRate: z.string().trim(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (parseTaxRateInput(value.taxRate) === "invalid") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["taxRate"],
+        message: "Grenzsteuersatz wie 42 oder 42,50 eingeben.",
+      });
+    }
+  });
 
 export const transactionIdSchema = z.uuid("Ungültige Buchung.");
 

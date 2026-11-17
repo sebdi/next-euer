@@ -38,6 +38,8 @@ model Transaction {
 model Profile {
   githubId    String   @id
   homeAddress String?
+  /// Personal marginal income-tax rate in basis points. 4200 = 42,00 %.
+  marginalTaxRateBps Int?
   updatedAt   DateTime @updatedAt
 
   @@map("profiles")

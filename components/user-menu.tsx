@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import { Avatar } from "radix-ui";
 import { ExternalLink, LogOut, Settings } from "lucide-react";
 import { signOutAction } from "@/app/actions/auth";
-import { ProfileDialog } from "@/components/profile-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,26 +14,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { AppUser } from "@/lib/types";
 
-export function UserMenu({
-  user,
-  homeAddress,
-  onHomeAddressChange,
-}: {
-  user: AppUser;
-  homeAddress: string | null;
-  onHomeAddressChange: (homeAddress: string | null) => void;
-}) {
+export function UserMenu({ user, jahr }: { user: AppUser; jahr: number }) {
   const initials = (user.name || user.login || "N")
     .slice(0, 2)
     .toUpperCase();
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const githubHref = user.login
     ? `https://github.com/${encodeURIComponent(user.login)}`
     : "https://github.com";
 
   return (
-    <>
-      <DropdownMenu>
+    <DropdownMenu>
       <DropdownMenuTrigger
         className="rounded-full transition-opacity hover:opacity-80"
         aria-label="Benutzermenü"
@@ -61,8 +50,10 @@ export function UserMenu({
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
-          <Settings /> Einstellungen
+        <DropdownMenuItem asChild>
+          <Link href={`/profil?jahr=${jahr}`}>
+            <Settings /> Profil
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <a href={githubHref} target="_blank" rel="noreferrer">
@@ -78,13 +69,6 @@ export function UserMenu({
           <LogOut /> Abmelden
         </DropdownMenuItem>
       </DropdownMenuContent>
-      </DropdownMenu>
-      <ProfileDialog
-        open={settingsOpen}
-        homeAddress={homeAddress}
-        onOpenChange={setSettingsOpen}
-        onSaved={onHomeAddressChange}
-      />
-    </>
+    </DropdownMenu>
   );
 }

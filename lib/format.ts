@@ -12,6 +12,15 @@ const datum = new Intl.DateTimeFormat("de-DE", {
   timeZone: "UTC",
 });
 
+const percent = new Intl.NumberFormat("de-DE", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+export function formatTaxRate(basisPoints: number): string {
+  return `${percent.format(basisPoints / 100)} %`;
+}
+
 export function formatEuro(cent: number): string {
   return eur.format(cent / 100);
 }
