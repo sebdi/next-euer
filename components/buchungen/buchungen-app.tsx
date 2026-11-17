@@ -15,6 +15,7 @@ import {
 } from "@/app/actions/transactions";
 import { importCsvAction } from "@/app/actions/import";
 import { artLabel, getKategorie } from "@/lib/categories";
+import type { ImportMapping } from "@/lib/csv-import";
 import type { EntrySuggestions } from "@/lib/suggestions";
 import type { AppUser, Buchung, BuchungInput, YearTotals } from "@/lib/types";
 import { BuchungDialog } from "./buchung-dialog";
@@ -179,11 +180,13 @@ export function BuchungenApp({
     toast.success("Export wird heruntergeladen");
   };
 
-  const handleImport = async (file: File) => {
+  const handleImport = async (file: File, mapping: ImportMapping, hasHeader: boolean) => {
     setImporting(true);
     try {
       const data = new FormData();
       data.set("file", file);
+      data.set("mapping", JSON.stringify(mapping));
+      data.set("hasHeader", hasHeader ? "1" : "0");
       const result = await importCsvAction(data);
       if (!result.ok) {
         toast.error(result.error);

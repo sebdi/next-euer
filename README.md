@@ -162,7 +162,7 @@ Export downloads `nexteuer-YYYY.csv` for the selected calendar year. It includes
 - Amounts in German decimal notation, such as `1.234,56`
 - Cells that look like spreadsheet formulas are prefixed so the spreadsheet does not execute them
 
-Import expects the same layout. The dialog shows a preview and marks invalid rows. If any row is invalid, nothing is imported. Valid rows are written in one database transaction. A row that already exists with the same date, category, account, description, and amounts is skipped. Imported text is stored as text and is never evaluated as code.
+Import accepts a comma, semicolon, or tab-separated file. In the dialog, map its columns to the booking fields. Bezeichnung and Datum are required, plus either a Betrag column or separate Einnahmen and Ausgaben columns. A positive Betrag is income and a negative Betrag is an expense. Art, Konto, and Rechnungsnummer are optional. The first row is treated as column names unless you turn that off. The export layout above is recognized automatically. The dialog shows a preview and marks invalid rows. If any row is invalid, nothing is imported. Valid rows are written in one database transaction. A row that already exists with the same date, category, account, description, and amounts is skipped. Imported text is stored as text and is never evaluated as code.
 
 The 70% Bewirtungskosten reduction applies when you enter a booking in the form. A CSV import stores the amounts in the file as they are.
 

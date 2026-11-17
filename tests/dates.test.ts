@@ -23,6 +23,8 @@ describe("year filtering", () => {
   it("parses German and ISO dates", () => {
     expect(parseFlexibleDate("15.1.2026")).toBe("2026-01-15");
     expect(parseFlexibleDate("2026-01-15")).toBe("2026-01-15");
+    expect(parseFlexibleDate("2026-01-15T10:30:00Z")).toBe("2026-01-15");
+    expect(parseFlexibleDate("15/01/2026")).toBe("2026-01-15");
     expect(parseFlexibleDate("31.02.2026")).toBeNull();
   });
 });

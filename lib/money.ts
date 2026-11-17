@@ -66,6 +66,29 @@ export function parseBetrag(raw: string): number | null {
   }
 }
 
+/** German amount with an optional leading, trailing, or parenthesized minus. */
+export function parseSignedBetrag(raw: string): number | null {
+  let s = raw.trim().replace(/[\s€]/g, "");
+  if (!s) return null;
+  let negative = false;
+  if (s.startsWith("(") && s.endsWith(")")) {
+    negative = true;
+    s = s.slice(1, -1);
+  }
+  s = s.replace(/eur$/i, "");
+  if (s.startsWith("+")) s = s.slice(1);
+  else if (s.startsWith("-") || s.startsWith("−")) {
+    negative = true;
+    s = s.slice(1);
+  } else if (s.endsWith("-") || s.endsWith("−")) {
+    negative = true;
+    s = s.slice(0, -1);
+  }
+  const cents = parseBetrag(s);
+  if (cents == null) return null;
+  return negative ? -cents : cents;
+}
+
 /** 70 % of a gross cent amount, half-up, integer cents only. */
 export function bewirtungAbziehbarCents(bruttoCent: number): number {
   if (!Number.isInteger(bruttoCent) || bruttoCent < 0) {

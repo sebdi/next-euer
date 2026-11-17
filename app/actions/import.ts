@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { getAuthorizedUser } from "@/lib/auth/session";
 import { actionError, type ActionResult } from "@/lib/action-result";
-import { validateCsvText } from "@/lib/csv";
+import {
+  importMappingSchema,
+  mapCsvTable,
+  mappingProblem,
+  readCsvTable,
+  type ImportMapping,
+} from "@/lib/csv-import";
 import { importRows } from "@/lib/transactions";
 import { USER_ERROR } from "@/lib/validation";
 
@@ -34,10 +40,21 @@ export async function importCsvAction(
     return actionError("Die Datei konnte nicht gelesen werden.");
   }
 
-  const preview = validateCsvText(text);
-  if (!preview.headersOk) {
-    return actionError(preview.rows[0]?.error ?? USER_ERROR.importInvalid);
+  const hasHeader = formData.get("hasHeader") !== "0";
+  let mapping: ImportMapping;
+  try {
+    const raw = formData.get("mapping");
+    mapping = importMappingSchema.parse(JSON.parse(typeof raw === "string" ? raw : ""));
+  } catch {
+    return actionError("Die Zuordnung ist ungültig.");
   }
+
+  const loaded = readCsvTable(text, hasHeader);
+  if ("error" in loaded) return actionError(loaded.error);
+  const problem = mappingProblem(mapping, loaded.table.headers.length);
+  if (problem) return actionError(problem);
+
+  const preview = mapCsvTable(loaded.table, mapping, hasHeader);
   const invalid = preview.rows.filter((r) => r.error);
   if (invalid.length > 0) {
     return actionError(

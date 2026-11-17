@@ -1,5 +1,7 @@
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
-const DE_DATE = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/;
+const ISO_PREFIX = /^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/;
+const DAY_FIRST = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/;
+const YEAR_FIRST_DOTS = /^(\d{4})\.(\d{2})\.(\d{2})$/;
 
 export function isValidIsoDate(iso: string): boolean {
   const match = ISO_DATE.exec(iso);
@@ -37,10 +39,17 @@ export function utcDateToIso(date: Date): string {
 
 export function parseFlexibleDate(raw: string): string | null {
   const trimmed = raw.trim();
-  if (ISO_DATE.test(trimmed)) {
-    return isValidIsoDate(trimmed) ? trimmed : null;
+  const isoPrefix = ISO_PREFIX.exec(trimmed);
+  if (isoPrefix) {
+    const iso = `${isoPrefix[1]}-${isoPrefix[2]}-${isoPrefix[3]}`;
+    return isValidIsoDate(iso) ? iso : null;
   }
-  const de = DE_DATE.exec(trimmed);
+  const dottedYear = YEAR_FIRST_DOTS.exec(trimmed);
+  if (dottedYear) {
+    const iso = `${dottedYear[1]}-${dottedYear[2]}-${dottedYear[3]}`;
+    return isValidIsoDate(iso) ? iso : null;
+  }
+  const de = DAY_FIRST.exec(trimmed);
   if (!de) return null;
   const day = de[1].padStart(2, "0");
   const month = de[2].padStart(2, "0");

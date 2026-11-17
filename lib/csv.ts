@@ -27,7 +27,10 @@ export function csvCell(value: string): string {
   return v;
 }
 
-export function parseCsv(text: string): string[][] {
+export function parseCsv(
+  text: string,
+  delimiter: "," | ";" | "\t" = ";",
+): string[][] {
   const input = text.replace(/^\uFEFF/, "");
   const rows: string[][] = [];
   let row: string[] = [];
@@ -53,7 +56,7 @@ export function parseCsv(text: string): string[][] {
       inQuotes = true;
       continue;
     }
-    if (ch === ";") {
+    if (ch === delimiter) {
       row.push(cell);
       cell = "";
       continue;
