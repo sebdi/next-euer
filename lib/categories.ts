@@ -1,3 +1,4 @@
+import { config } from "@/config";
 import type { BuchungTyp, Kategorie } from "./types";
 
 export const ACCOUNTING_CATEGORIES = [
@@ -59,7 +60,7 @@ export function defaultTypForCategory(_category: string): BuchungTyp {
 /** Label shown in the list. Income has no expense category. */
 export function artLabel(buchung: { typ: BuchungTyp; kategorieId: string }): string {
   if (buchung.typ === "einnahme") return "Einnahme";
-  return getKategorie(buchung.kategorieId)?.name ?? "Keine Kategorie";
+  return getKategorie(buchung.kategorieId)?.name ?? config.appearance.missingCategory.label;
 }
 
 export function defaultAccountForCategory(category: string): string {

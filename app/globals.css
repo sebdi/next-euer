@@ -73,6 +73,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-destructive: var(--destructive);
   --color-warning: var(--warning);
+  --color-missing-category: var(--missing-category);
   --color-positive: var(--positive);
   --color-overlay: var(--overlay);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;

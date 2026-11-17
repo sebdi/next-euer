@@ -34,7 +34,7 @@ export function BuchungenList({
                   <span aria-hidden className="text-border-strong">·</span>
                   <span
                     data-privacy
-                    className={cn("truncate", ohneKategorie && "text-warning")}
+                    className={cn("truncate", ohneKategorie && "text-missing-category")}
                   >
                     {einnahme ? b.rechnungsnummer || artLabel(b) : artLabel(b)}
                   </span>

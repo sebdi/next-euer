@@ -15,6 +15,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { config } from "@/config";
 import { KATEGORIEN, getKategorie } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 
@@ -83,8 +84,11 @@ export function CategoryCombobox({
               </>
             )}
             {allowEmpty && (
-              <CommandItem value="Keine Kategorie" onSelect={() => select(null)}>
-                <span className="flex-1">Keine Kategorie</span>
+              <CommandItem
+                value={config.appearance.missingCategory.label}
+                onSelect={() => select(null)}
+              >
+                <span className="flex-1">{config.appearance.missingCategory.label}</span>
                 {!value && <Check className="size-3.5" aria-hidden />}
               </CommandItem>
             )}

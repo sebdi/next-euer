@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { missingCategoryCss } from "@/config";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -30,6 +31,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body>
+        <style href="missing-category" precedence="default">
+          {missingCategoryCss()}
+        </style>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

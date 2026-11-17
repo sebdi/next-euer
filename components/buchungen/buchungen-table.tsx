@@ -108,7 +108,7 @@ export function BuchungenTable({
                   className={cn(
                     "inline-block max-w-full truncate rounded-sm border px-1.5 py-px align-middle text-xs group-hover:bg-background",
                     ohneKategorie
-                      ? "border-warning/40 bg-warning/15 text-warning"
+                      ? "border-missing-category/40 bg-missing-category/15 text-missing-category"
                       : "bg-surface text-muted-foreground",
                   )}
                 >
