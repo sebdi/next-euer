@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { businessSlug, betriebArtLabel } from "@/lib/business-meta";
+import { buchungenHref, businessSlug, betriebArtLabel, profilHref } from "@/lib/business-meta";
 import { resolveBusiness } from "@/lib/businesses";
 import { businessIdSchema, businessInputSchema } from "@/lib/validation";
 import type { Betrieb } from "@/lib/types";
@@ -54,6 +54,12 @@ describe("business labels", () => {
     expect(businessSlug("Büro Müller & Söhne")).toBe("buero-mueller-soehne");
     expect(businessSlug("  Café  ")).toBe("cafe");
     expect(businessSlug("!!!")).toBe("betrieb");
+  });
+
+  it("keeps the same business and year in both headers", () => {
+    expect(buchungenHref(A.id, 2026)).toBe(`/?betrieb=${A.id}&jahr=2026`);
+    expect(profilHref(A.id, 2026)).toBe(`/profil?betrieb=${A.id}&jahr=2026`);
+    expect(buchungenHref(undefined, 2026)).toBe("/?jahr=2026");
   });
 
   it("labels both kinds", () => {

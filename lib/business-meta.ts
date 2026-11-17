@@ -10,6 +10,30 @@ export const DEFAULT_BETRIEB_NAME = "Mein Betrieb";
 /** Cookie, das den zuletzt gewählten Betrieb merkt */
 export const BETRIEB_COOKIE = "nexteuer-betrieb";
 
+/** Merkt den Betrieb für Buchungen und Profil. */
+export function rememberBetrieb(id: string) {
+  try {
+    document.cookie = `${BETRIEB_COOKIE}=${encodeURIComponent(id)}; path=/; max-age=31536000; samesite=lax`;
+  } catch {
+    // Cookies nicht verfügbar
+  }
+}
+
+function pageHref(path: "/" | "/profil", betriebId: string | undefined, jahr: number): string {
+  const params = new URLSearchParams();
+  if (betriebId) params.set("betrieb", betriebId);
+  params.set("jahr", String(jahr));
+  return `${path}?${params.toString()}`;
+}
+
+export function buchungenHref(betriebId: string | undefined, jahr: number): string {
+  return pageHref("/", betriebId, jahr);
+}
+
+export function profilHref(betriebId: string | undefined, jahr: number): string {
+  return pageHref("/profil", betriebId, jahr);
+}
+
 export function betriebArtLabel(art: BetriebArt): string {
   return art === "gewerblich" ? "Gewerblich" : "Freiberuflich";
 }

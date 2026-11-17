@@ -12,9 +12,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { profilHref } from "@/lib/business-meta";
 import type { AppUser } from "@/lib/types";
 
-export function UserMenu({ user, jahr }: { user: AppUser; jahr: number }) {
+export function UserMenu({
+  user,
+  jahr,
+  betriebId,
+}: {
+  user: AppUser;
+  jahr: number;
+  betriebId?: string;
+}) {
   const initials = (user.name || user.login || "N")
     .slice(0, 2)
     .toUpperCase();
@@ -51,7 +60,7 @@ export function UserMenu({ user, jahr }: { user: AppUser; jahr: number }) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href={`/profil?jahr=${jahr}`}>
+          <Link href={profilHref(betriebId, jahr)}>
             <Settings /> Profil
           </Link>
         </DropdownMenuItem>

@@ -23,7 +23,7 @@ import {
   BetriebDialog,
   type BetriebFormValues,
 } from "@/components/betriebe/betrieb-dialog";
-import { BETRIEB_COOKIE, betriebArtLabel } from "@/lib/business-meta";
+import { betriebArtLabel, buchungenHref, rememberBetrieb } from "@/lib/business-meta";
 import { artLabel, getKategorie } from "@/lib/categories";
 import type { ImportMapping } from "@/lib/csv-import";
 import type { EntrySuggestions } from "@/lib/suggestions";
@@ -44,21 +44,6 @@ import { ImportDialog } from "./import-dialog";
 import { Totals } from "./totals";
 
 const collator = new Intl.Collator("de");
-
-function buchungenHref(betriebId: string | undefined, jahr: number): string {
-  const params = new URLSearchParams();
-  if (betriebId) params.set("betrieb", betriebId);
-  params.set("jahr", String(jahr));
-  return `/?${params.toString()}`;
-}
-
-function rememberBetrieb(id: string) {
-  try {
-    document.cookie = `${BETRIEB_COOKIE}=${encodeURIComponent(id)}; path=/; max-age=31536000; samesite=lax`;
-  } catch {
-    // Cookies nicht verfügbar
-  }
-}
 
 function compare(a: Buchung, b: Buchung, key: SortKey): number {
   switch (key) {

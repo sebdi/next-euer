@@ -1,16 +1,26 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import {
+  createBusinessAction,
+  deleteBusinessAction,
+  updateBusinessAction,
+} from "@/app/actions/businesses";
 import { saveProfileAction } from "@/app/actions/profile";
+import {
+  BetriebDialog,
+  type BetriebFormValues,
+} from "@/components/betriebe/betrieb-dialog";
 import { Header } from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { buchungenHref, profilHref, rememberBetrieb } from "@/lib/business-meta";
 import { centToInput, formatEuro, formatEuroSigned, formatTaxRate } from "@/lib/format";
 import { expectedIncomeTaxCents, parseTaxRateInput } from "@/lib/tax";
-import type { AppUser, YearTotals } from "@/lib/types";
+import type { AppUser, Betrieb, YearTotals } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export function ProfileScreen({
@@ -22,6 +32,8 @@ export function ProfileScreen({
   marginalTaxRateBps,
   loadError,
   anzahlBetriebe = 1,
+  betrieb = null,
+  betriebe = [],
 }: {
   user: AppUser;
   jahr: number;
@@ -32,9 +44,81 @@ export function ProfileScreen({
   loadError: string | null;
   /** Ab zwei Betrieben wird der gemeinsame Gewinn ausgewiesen */
   anzahlBetriebe?: number;
+  betrieb?: Betrieb | null;
+  betriebe?: Betrieb[];
 }) {
   const mehrereBetriebe = anzahlBetriebe > 1;
   const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [saving, setSaving] = useState(false);
+  const [betriebDialog, setBetriebDialog] = useState<{
+    open: boolean;
+    betrieb?: Betrieb;
+  }>({ open: false });
+
+  const setJahr = (next: number) => {
+    startTransition(() => {
+      router.push(profilHref(betrieb?.id, next));
+    });
+  };
+
+  const setBetrieb = (id: string) => {
+    if (id === betrieb?.id) return;
+    rememberBetrieb(id);
+    startTransition(() => {
+      router.push(profilHref(id, jahr));
+    });
+  };
+
+  const handleBetriebSubmit = async (
+    values: BetriebFormValues,
+  ): Promise<Record<string, string> | null> => {
+    if (saving) return { name: "Bitte warten…" };
+    setSaving(true);
+    try {
+      const editing = betriebDialog.betrieb;
+      const result = editing
+        ? await updateBusinessAction(editing.id, values)
+        : await createBusinessAction(values);
+      if (!result.ok) {
+        toast.error(result.error);
+        return result.fieldErrors ?? { name: result.error };
+      }
+      setBetriebDialog((current) => ({ ...current, open: false }));
+      if (editing) {
+        toast.success("Betrieb gespeichert");
+        startTransition(() => router.refresh());
+      } else {
+        toast.success(`${result.data.name} angelegt`);
+        rememberBetrieb(result.data.id);
+        startTransition(() => router.push(profilHref(result.data.id, jahr)));
+      }
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBetriebDelete = async () => {
+    const target = betriebDialog.betrieb;
+    if (!target || saving) return;
+    setSaving(true);
+    try {
+      const result = await deleteBusinessAction(target.id);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(`${target.name} gelöscht`);
+      setBetriebDialog((current) => ({ ...current, open: false }));
+      const next = betriebe.find((item) => item.id !== target.id);
+      if (next) rememberBetrieb(next.id);
+      startTransition(() => router.push(profilHref(next?.id, jahr)));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const tax = loadError
     ? null
     : expectedIncomeTaxCents(totals.profitCents, marginalTaxRateBps);
@@ -44,8 +128,20 @@ export function ProfileScreen({
       <Header
         jahr={jahr}
         jahre={jahre}
-        onJahrChange={(next) => router.push(`/profil?jahr=${next}`)}
+        onJahrChange={setJahr}
         user={user}
+        homeHref={buchungenHref(betrieb?.id, jahr)}
+        betrieb={
+          betrieb
+            ? {
+                betrieb,
+                betriebe,
+                onSelect: setBetrieb,
+                onAdd: () => setBetriebDialog({ open: true }),
+                onEdit: () => setBetriebDialog({ open: true, betrieb }),
+              }
+            : undefined
+        }
       />
       <main className="mx-auto max-w-6xl px-4 pt-6 pb-16 md:px-6 md:pt-8">
         <h1 className="text-2xl font-semibold tracking-tight">Profil</h1>
@@ -108,6 +204,15 @@ export function ProfileScreen({
           />
         </section>
       </main>
+      <BetriebDialog
+        open={betriebDialog.open}
+        onOpenChange={(open) => setBetriebDialog((current) => ({ ...current, open }))}
+        betrieb={betriebDialog.betrieb}
+        canDelete={betriebe.length > 1}
+        pending={saving}
+        onSubmit={handleBetriebSubmit}
+        onDelete={handleBetriebDelete}
+      />
     </div>
   );
 }

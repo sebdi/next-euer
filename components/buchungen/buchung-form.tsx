@@ -27,13 +27,6 @@ import {
 import { centToInput, formatEuro, heuteIso, parseBetrag } from "@/lib/format";
 import { bewirtungAbziehbarCents } from "@/lib/money";
 import { betriebArtLabel } from "@/lib/business-meta";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { Betrieb, Buchung, BuchungInput, BuchungTyp } from "@/lib/types";
 
 type Errors = Partial<
@@ -322,6 +315,41 @@ export function BuchungForm({
             "min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y",
         )}
       >
+        {betriebe.length > 1 && (
+          <Field
+            id={`${uid}-betrieb`}
+            label="Betrieb"
+            error={errors.betrieb}
+            hint={
+              buchung && zielBetrieb !== betriebId
+                ? "Die Buchung wird in diesen Betrieb verschoben."
+                : buchung
+                  ? "Anderer Betrieb verschiebt die Buchung."
+                  : undefined
+            }
+          >
+            {(field) => (
+              <select
+                {...field}
+                value={zielBetrieb}
+                disabled={pending}
+                onChange={(event) => {
+                  setZielBetrieb(event.target.value);
+                  clear("betrieb");
+                }}
+                className="h-10 w-full rounded-md border border-input bg-background px-2.5 text-sm md:h-8"
+              >
+                {betriebe.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name === betriebArtLabel(b.art)
+                      ? b.name
+                      : `${b.name} · ${betriebArtLabel(b.art)}`}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+        )}
         <Field id={`${uid}-bezeichnung`} label="Bezeichnung" error={errors.bezeichnung}>
           {(field) => (
             <SuggestInput
@@ -622,46 +650,6 @@ export function BuchungForm({
             )}
           </Field>
         </div>
-
-        {betriebe.length > 1 && (
-          <Field
-            id={`${uid}-betrieb`}
-            label="Betrieb"
-            error={errors.betrieb}
-            hint={
-              buchung && zielBetrieb !== betriebId
-                ? "Die Buchung wird in diesen Betrieb verschoben."
-                : undefined
-            }
-          >
-            {(field) => (
-              <Select
-                value={zielBetrieb}
-                onValueChange={(value) => {
-                  setZielBetrieb(value);
-                  clear("betrieb");
-                }}
-                disabled={pending}
-              >
-                <SelectTrigger {...field} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {betriebe.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                      {b.name !== betriebArtLabel(b.art) && (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          {betriebArtLabel(b.art)}
-                        </span>
-                      )}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </Field>
-        )}
       </div>
 
       <div className="flex shrink-0 flex-col-reverse gap-2 border-t bg-surface px-4 py-3 md:flex-row md:items-center md:px-5 md:rounded-b-lg">

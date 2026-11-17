@@ -103,7 +103,7 @@ export function Header({
         <div className="ml-auto flex shrink-0 items-center gap-2 md:gap-3">
           <PrivacyToggle />
           <ThemeSwitcher />
-          <UserMenu user={user} jahr={jahr} />
+          <UserMenu user={user} jahr={jahr} betriebId={betrieb?.betrieb.id} />
         </div>
       </div>
     </header>

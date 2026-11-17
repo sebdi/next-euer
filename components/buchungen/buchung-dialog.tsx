@@ -49,7 +49,9 @@ export function BuchungDialog({
   const desktop = useMediaQuery("(min-width: 768px)");
   const title = buchung ? "Buchung bearbeiten" : "Neue Buchung";
   const description = buchung
-    ? "Angaben der Buchung ändern."
+    ? (betriebe?.length ?? 0) > 1
+      ? "Angaben ändern oder die Buchung in einen anderen Betrieb verschieben."
+      : "Angaben der Buchung ändern."
     : "Einnahme oder Ausgabe erfassen.";
 
   const form = (
