@@ -10,8 +10,9 @@ import {
   readCsvTable,
   type ImportMapping,
 } from "@/lib/csv-import";
+import { businessExists } from "@/lib/businesses";
 import { importRows } from "@/lib/transactions";
-import { USER_ERROR } from "@/lib/validation";
+import { businessIdSchema, USER_ERROR } from "@/lib/validation";
 
 const MAX_IMPORT_BYTES = 1_000_000;
 
@@ -20,6 +21,9 @@ export async function importCsvAction(
 ): Promise<ActionResult<{ imported: number; skipped: number }>> {
   const user = await getAuthorizedUser();
   if (!user) return actionError(USER_ERROR.unauthorized);
+
+  const betrieb = businessIdSchema.safeParse(formData.get("betriebId"));
+  if (!betrieb.success) return actionError(USER_ERROR.businessNotFound);
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
@@ -66,7 +70,10 @@ export async function importCsvAction(
   }
 
   try {
-    const data = await importRows(preview.valid);
+    if (!(await businessExists(betrieb.data))) {
+      return actionError(USER_ERROR.businessNotFound);
+    }
+    const data = await importRows(betrieb.data, preview.valid);
     revalidatePath("/");
     return { ok: true, data };
   } catch {

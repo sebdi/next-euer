@@ -9,7 +9,9 @@ import {
   getTransaction,
   updateTransaction,
 } from "@/lib/transactions";
+import { businessExists } from "@/lib/businesses";
 import {
+  businessIdSchema,
   buchungInputSchema,
   fieldErrorsFromZod,
   transactionIdSchema,
@@ -21,7 +23,15 @@ async function parseInput(input: BuchungInput) {
   return buchungInputSchema.safeParse(input);
 }
 
+/** Prüft die Betriebs-ID und ob der Betrieb existiert. */
+async function checkBusiness(betriebId: string): Promise<string | null> {
+  const parsed = businessIdSchema.safeParse(betriebId);
+  if (!parsed.success) return null;
+  return (await businessExists(parsed.data)) ? parsed.data : null;
+}
+
 export async function createBuchungAction(
+  betriebId: string,
   input: BuchungInput,
 ): Promise<ActionResult<Buchung>> {
   const user = await getAuthorizedUser();
@@ -31,7 +41,9 @@ export async function createBuchungAction(
     return actionError(USER_ERROR.validation, fieldErrorsFromZod(parsed.error));
   }
   try {
-    const data = await createTransaction(parsed.data);
+    const businessId = await checkBusiness(betriebId);
+    if (!businessId) return actionError(USER_ERROR.businessNotFound);
+    const data = await createTransaction(businessId, parsed.data);
     revalidatePath("/");
     return { ok: true, data };
   } catch {
@@ -42,6 +54,8 @@ export async function createBuchungAction(
 export async function updateBuchungAction(
   id: string,
   input: BuchungInput,
+  /** Zielbetrieb, um die Buchung zu verschieben */
+  betriebId?: string,
 ): Promise<ActionResult<Buchung>> {
   const user = await getAuthorizedUser();
   if (!user) return actionError(USER_ERROR.unauthorized);
@@ -54,7 +68,13 @@ export async function updateBuchungAction(
   try {
     const existing = await getTransaction(idParsed.data);
     if (!existing) return actionError(USER_ERROR.notFound);
-    const data = await updateTransaction(idParsed.data, parsed.data);
+    let businessId: string | undefined;
+    if (betriebId !== undefined) {
+      const checked = await checkBusiness(betriebId);
+      if (!checked) return actionError(USER_ERROR.businessNotFound);
+      businessId = checked;
+    }
+    const data = await updateTransaction(idParsed.data, parsed.data, businessId);
     revalidatePath("/");
     return { ok: true, data };
   } catch {

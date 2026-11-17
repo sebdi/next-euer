@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthorizedUser } from "@/lib/auth/session";
+import { businessSlug, listBusinesses } from "@/lib/businesses";
 import { transactionsToCsv } from "@/lib/csv";
 import { parseYearParam } from "@/lib/dates";
 import { exportRowsForYear } from "@/lib/transactions";
@@ -10,15 +11,22 @@ export async function GET(request: NextRequest) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const year = parseYearParam(request.nextUrl.searchParams.get("year"));
+  const params = request.nextUrl.searchParams;
+  const year = parseYearParam(params.get("year"));
   try {
-    const rows = await exportRowsForYear(year);
+    const betriebe = await listBusinesses();
+    const betrieb = betriebe.find((b) => b.id === params.get("betrieb"));
+    if (!betrieb) {
+      return new Response("Betrieb nicht gefunden.", { status: 404 });
+    }
+    const rows = await exportRowsForYear(betrieb.id, year);
     const csv = transactionsToCsv(rows);
+    const filename = `nexteuer-${businessSlug(betrieb.name)}-${year}.csv`;
     return new Response(csv, {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="nexteuer-${year}.csv"`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
         "Cache-Control": "no-store",
       },
     });

@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/drawer";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import type { EntrySuggestions } from "@/lib/suggestions";
-import type { Buchung, BuchungInput } from "@/lib/types";
+import type { Betrieb, Buchung, BuchungInput } from "@/lib/types";
 import { BuchungForm } from "./buchung-form";
 
 /** Dialog auf dem Desktop, Drawer auf kleinen Bildschirmen */
@@ -29,15 +29,22 @@ export function BuchungDialog({
   onDelete,
   homeAddress,
   suggestions,
+  betriebe,
+  betriebId,
 }: {
   open: boolean;
   pending?: boolean;
   onOpenChange: (open: boolean) => void;
   buchung?: Buchung;
-  onSubmit: (input: BuchungInput) => Promise<Record<string, string> | null>;
+  onSubmit: (
+    input: BuchungInput,
+    betriebId: string,
+  ) => Promise<Record<string, string> | null>;
   onDelete?: () => void;
   homeAddress?: string | null;
   suggestions: EntrySuggestions;
+  betriebe?: Betrieb[];
+  betriebId?: string;
 }) {
   const desktop = useMediaQuery("(min-width: 768px)");
   const title = buchung ? "Buchung bearbeiten" : "Neue Buchung";
@@ -47,11 +54,13 @@ export function BuchungDialog({
 
   const form = (
     <BuchungForm
-      key={buchung?.id ?? "neu"}
+      key={`${buchung?.id ?? "neu"}-${betriebId ?? ""}`}
       buchung={buchung}
       pending={pending}
       homeAddress={homeAddress}
       suggestions={suggestions}
+      betriebe={betriebe}
+      betriebId={betriebId}
       onSubmit={onSubmit}
       onCancel={() => onOpenChange(false)}
       onDelete={onDelete}

@@ -26,11 +26,27 @@ import {
 } from "@/lib/distance/fare";
 import { centToInput, formatEuro, heuteIso, parseBetrag } from "@/lib/format";
 import { bewirtungAbziehbarCents } from "@/lib/money";
-import type { Buchung, BuchungInput, BuchungTyp } from "@/lib/types";
+import { betriebArtLabel } from "@/lib/business-meta";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { Betrieb, Buchung, BuchungInput, BuchungTyp } from "@/lib/types";
 
 type Errors = Partial<
   Record<
-    "bezeichnung" | "kategorie" | "datum" | "betrag" | "konto" | "route" | "rate" | "rechnungsnummer",
+    | "bezeichnung"
+    | "kategorie"
+    | "datum"
+    | "betrag"
+    | "konto"
+    | "route"
+    | "rate"
+    | "rechnungsnummer"
+    | "betrieb",
     string
   >
 >;
@@ -74,10 +90,19 @@ export function BuchungForm({
   onDelete,
   homeAddress,
   suggestions,
+  betriebe = [],
+  betriebId = "",
 }: {
   buchung?: Buchung;
   pending?: boolean;
-  onSubmit: (input: BuchungInput) => Promise<Record<string, string> | null>;
+  onSubmit: (
+    input: BuchungInput,
+    betriebId: string,
+  ) => Promise<Record<string, string> | null>;
+  /** Alle Betriebe; das Feld erscheint erst ab zwei */
+  betriebe?: Betrieb[];
+  /** Aktiver Betrieb, Vorbelegung für das Feld */
+  betriebId?: string;
   onCancel: () => void;
   onDelete?: () => void;
   homeAddress?: string | null;
@@ -104,6 +129,7 @@ export function BuchungForm({
   const [quote, setQuote] = useState<RouteQuote | null>(() => initialQuote(buchung));
   const [roundTrip, setRoundTrip] = useState(buchung?.roundTrip === true);
   const [calculating, setCalculating] = useState(false);
+  const [zielBetrieb, setZielBetrieb] = useState(betriebId);
   const [errors, setErrors] = useState<Errors>({});
 
   const clear = (key: keyof Errors) =>
@@ -224,7 +250,7 @@ export function BuchungForm({
               roundTrip,
             }
           : {}),
-      });
+      }, zielBetrieb);
     } catch {
       setErrors({ bezeichnung: "Die Buchung konnte nicht gespeichert werden." });
       return;
@@ -237,6 +263,7 @@ export function BuchungForm({
         betrag: serverErrors.betragCent ?? serverErrors.betrag,
         konto: serverErrors.konto,
         rechnungsnummer: serverErrors.rechnungsnummer,
+        betrieb: serverErrors.betrieb,
       };
       setErrors(mapped);
     }
@@ -595,6 +622,46 @@ export function BuchungForm({
             )}
           </Field>
         </div>
+
+        {betriebe.length > 1 && (
+          <Field
+            id={`${uid}-betrieb`}
+            label="Betrieb"
+            error={errors.betrieb}
+            hint={
+              buchung && zielBetrieb !== betriebId
+                ? "Die Buchung wird in diesen Betrieb verschoben."
+                : undefined
+            }
+          >
+            {(field) => (
+              <Select
+                value={zielBetrieb}
+                onValueChange={(value) => {
+                  setZielBetrieb(value);
+                  clear("betrieb");
+                }}
+                disabled={pending}
+              >
+                <SelectTrigger {...field} className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {betriebe.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                      {b.name !== betriebArtLabel(b.art) && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {betriebArtLabel(b.art)}
+                        </span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </Field>
+        )}
       </div>
 
       <div className="flex shrink-0 flex-col-reverse gap-2 border-t bg-surface px-4 py-3 md:flex-row md:items-center md:px-5 md:rounded-b-lg">

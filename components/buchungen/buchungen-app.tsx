@@ -14,10 +14,26 @@ import {
   updateBuchungAction,
 } from "@/app/actions/transactions";
 import { importCsvAction } from "@/app/actions/import";
+import {
+  createBusinessAction,
+  deleteBusinessAction,
+  updateBusinessAction,
+} from "@/app/actions/businesses";
+import {
+  BetriebDialog,
+  type BetriebFormValues,
+} from "@/components/betriebe/betrieb-dialog";
+import { BETRIEB_COOKIE, betriebArtLabel } from "@/lib/business-meta";
 import { artLabel, getKategorie } from "@/lib/categories";
 import type { ImportMapping } from "@/lib/csv-import";
 import type { EntrySuggestions } from "@/lib/suggestions";
-import type { AppUser, Buchung, BuchungInput, YearTotals } from "@/lib/types";
+import type {
+  AppUser,
+  Betrieb,
+  Buchung,
+  BuchungInput,
+  YearTotals,
+} from "@/lib/types";
 import { BuchungDialog } from "./buchung-dialog";
 import { BuchungenList } from "./buchungen-list";
 import { BuchungenTable, type Sort, type SortKey } from "./buchungen-table";
@@ -28,6 +44,21 @@ import { ImportDialog } from "./import-dialog";
 import { Totals } from "./totals";
 
 const collator = new Intl.Collator("de");
+
+function buchungenHref(betriebId: string | undefined, jahr: number): string {
+  const params = new URLSearchParams();
+  if (betriebId) params.set("betrieb", betriebId);
+  params.set("jahr", String(jahr));
+  return `/?${params.toString()}`;
+}
+
+function rememberBetrieb(id: string) {
+  try {
+    document.cookie = `${BETRIEB_COOKIE}=${encodeURIComponent(id)}; path=/; max-age=31536000; samesite=lax`;
+  } catch {
+    // Cookies nicht verfügbar
+  }
+}
 
 function compare(a: Buchung, b: Buchung, key: SortKey): number {
   switch (key) {
@@ -59,6 +90,8 @@ export function BuchungenApp({
   user,
   jahr,
   jahre,
+  betrieb,
+  betriebe,
   buchungen,
   totals,
   loadError,
@@ -68,6 +101,8 @@ export function BuchungenApp({
   user: AppUser;
   jahr: number;
   jahre: number[];
+  betrieb: Betrieb | null;
+  betriebe: Betrieb[];
   buchungen: Buchung[];
   totals: YearTotals;
   loadError: string | null;
@@ -86,6 +121,10 @@ export function BuchungenApp({
   const [importOpen, setImportOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [betriebDialog, setBetriebDialog] = useState<{
+    open: boolean;
+    betrieb?: Betrieb;
+  }>({ open: false });
 
   const sichtbar = useMemo(() => {
     const q = suche.trim().toLocaleLowerCase("de");
@@ -121,31 +160,108 @@ export function BuchungenApp({
 
   const setJahr = (next: number) => {
     startTransition(() => {
-      router.push(`/?jahr=${next}`);
+      router.push(buchungenHref(betrieb?.id, next));
     });
+  };
+
+  const setBetrieb = (id: string) => {
+    if (id === betrieb?.id) return;
+    rememberBetrieb(id);
+    setSuche("");
+    setKategorie(null);
+    startTransition(() => {
+      router.push(buchungenHref(id, jahr));
+    });
+  };
+
+  const handleBetriebSubmit = async (
+    values: BetriebFormValues,
+  ): Promise<Record<string, string> | null> => {
+    if (saving) return { name: "Bitte warten…" };
+    setSaving(true);
+    try {
+      const editing = betriebDialog.betrieb;
+      const result = editing
+        ? await updateBusinessAction(editing.id, values)
+        : await createBusinessAction(values);
+      if (!result.ok) {
+        toast.error(result.error);
+        return result.fieldErrors ?? { name: result.error };
+      }
+      setBetriebDialog((d) => ({ ...d, open: false }));
+      if (editing) {
+        toast.success("Betrieb gespeichert");
+        startTransition(() => router.refresh());
+      } else {
+        toast.success(`${result.data.name} angelegt`);
+        rememberBetrieb(result.data.id);
+        startTransition(() => router.push(buchungenHref(result.data.id, jahr)));
+      }
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBetriebDelete = async () => {
+    const target = betriebDialog.betrieb;
+    if (!target || saving) return;
+    setSaving(true);
+    try {
+      const result = await deleteBusinessAction(target.id);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(`${target.name} gelöscht`);
+      setBetriebDialog((d) => ({ ...d, open: false }));
+      const next = betriebe.find((b) => b.id !== target.id);
+      if (next) rememberBetrieb(next.id);
+      startTransition(() => router.push(buchungenHref(next?.id, jahr)));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const openNeu = () => setDialog({ open: true });
   const openEdit = (buchung: Buchung) => setDialog({ open: true, buchung });
   const closeDialog = () => setDialog((d) => ({ ...d, open: false }));
 
-  const handleSubmit = async (input: BuchungInput) => {
+  const handleSubmit = async (input: BuchungInput, zielBetriebId: string) => {
     if (saving) return { form: "Bitte warten…" };
+    if (!betrieb) return { form: "Kein Betrieb gewählt." };
+    const ziel = zielBetriebId || betrieb.id;
     setSaving(true);
     try {
       const result = dialog.buchung
-        ? await updateBuchungAction(dialog.buchung.id, input)
-        : await createBuchungAction(input);
+        ? await updateBuchungAction(
+            dialog.buchung.id,
+            input,
+            ziel !== betrieb.id ? ziel : undefined,
+          )
+        : await createBuchungAction(ziel, input);
       if (!result.ok) {
         toast.error(result.error);
         return result.fieldErrors ?? { form: result.error };
       }
-      toast.success(dialog.buchung ? "Buchung gespeichert" : "Buchung angelegt");
+      const zielName = betriebe.find((b) => b.id === ziel)?.name;
+      if (ziel !== betrieb.id) {
+        toast.success(
+          dialog.buchung
+            ? `Buchung nach ${zielName ?? "anderem Betrieb"} verschoben`
+            : `Buchung in ${zielName ?? "anderem Betrieb"} angelegt`,
+        );
+      } else {
+        toast.success(dialog.buchung ? "Buchung gespeichert" : "Buchung angelegt");
+      }
       const neuesJahr = Number(input.datum.slice(0, 4));
       closeDialog();
       startTransition(() => {
-        if (neuesJahr !== jahr) router.push(`/?jahr=${neuesJahr}`);
-        else router.refresh();
+        if (ziel === betrieb.id && neuesJahr !== jahr) {
+          router.push(buchungenHref(betrieb.id, neuesJahr));
+        } else {
+          router.refresh();
+        }
       });
       return null;
     } finally {
@@ -176,14 +292,22 @@ export function BuchungenApp({
       toast.error("Keine Buchungen zum Exportieren");
       return;
     }
-    window.location.assign(`/api/export?year=${jahr}`);
+    if (!betrieb) return;
+    window.location.assign(
+      `/api/export?betrieb=${encodeURIComponent(betrieb.id)}&year=${jahr}`,
+    );
     toast.success("Export wird heruntergeladen");
   };
 
   const handleImport = async (file: File, mapping: ImportMapping, hasHeader: boolean) => {
     setImporting(true);
     try {
+      if (!betrieb) {
+        toast.error("Kein Betrieb gewählt.");
+        return;
+      }
       const data = new FormData();
+      data.set("betriebId", betrieb.id);
       data.set("file", file);
       data.set("mapping", JSON.stringify(mapping));
       data.set("hasHeader", hasHeader ? "1" : "0");
@@ -212,6 +336,18 @@ export function BuchungenApp({
         jahre={jahre}
         onJahrChange={setJahr}
         user={user}
+        homeHref={buchungenHref(betrieb?.id, jahr)}
+        betrieb={
+          betrieb
+            ? {
+                betrieb,
+                betriebe,
+                onSelect: setBetrieb,
+                onAdd: () => setBetriebDialog({ open: true }),
+                onEdit: () => setBetriebDialog({ open: true, betrieb }),
+              }
+            : undefined
+        }
       />
 
       <main className="mx-auto max-w-6xl px-4 pt-6 pb-16 md:px-6 md:pt-8">
@@ -219,10 +355,20 @@ export function BuchungenApp({
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-tight">Buchungen</h1>
             <p className="mt-1 text-[13px] text-muted-foreground">
-              Einnahmen und Ausgaben verwalten
+              {betrieb ? (
+                <>
+                  <span className="font-medium text-foreground">{betrieb.name}</span>
+                  {betrieb.name !== betriebArtLabel(betrieb.art) && (
+                    <> · {betriebArtLabel(betrieb.art)}</>
+                  )}
+                  <span className="max-sm:hidden"> · Einnahmen und Ausgaben</span>
+                </>
+              ) : (
+                "Einnahmen und Ausgaben verwalten"
+              )}
             </p>
           </div>
-          <Button variant="primary" onClick={openNeu}>
+          <Button variant="primary" onClick={openNeu} disabled={!betrieb}>
             <Plus /> Neue Buchung
           </Button>
         </div>
@@ -337,6 +483,8 @@ export function BuchungenApp({
         onSubmit={handleSubmit}
         homeAddress={initialHomeAddress}
         suggestions={suggestions}
+        betriebe={betriebe}
+        betriebId={betrieb?.id}
         onDelete={
           dialog.buchung ? () => setToDelete(dialog.buchung ?? null) : undefined
         }
@@ -350,6 +498,15 @@ export function BuchungenApp({
         onConfirm={() => {
           if (toDelete) void handleDelete(toDelete);
         }}
+      />
+      <BetriebDialog
+        open={betriebDialog.open}
+        onOpenChange={(open) => setBetriebDialog((d) => ({ ...d, open }))}
+        betrieb={betriebDialog.betrieb}
+        canDelete={betriebe.length > 1}
+        pending={saving}
+        onSubmit={handleBetriebSubmit}
+        onDelete={() => void handleBetriebDelete()}
       />
       <ImportDialog
         open={importOpen}

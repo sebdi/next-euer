@@ -45,3 +45,14 @@ export type AppUser = {
   login: string;
   avatarUrl?: string;
 };
+
+export type BetriebArt = "freiberuflich" | "gewerblich";
+
+/** Ein Betrieb mit eigener EÜR */
+export interface Betrieb {
+  id: string;
+  name: string;
+  art: BetriebArt;
+  /** Anzahl aller Buchungen über alle Jahre */
+  anzahlBuchungen: number;
+}

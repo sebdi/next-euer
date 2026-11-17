@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { getPrisma } from "./prisma";
 import { defaultAccountForCategory } from "./categories";
 import { isoDateToUtc, utcDateToIso, yearDateRange } from "./dates";
@@ -106,12 +106,17 @@ function routeColumns(input: BuchungInput) {
   };
 }
 
-export async function listYears(): Promise<number[]> {
+/** Jahre mit Buchungen, optional nur für einen Betrieb. Das laufende Jahr ist immer dabei. */
+export async function listYears(businessId?: string): Promise<number[]> {
   const current = new Date().getFullYear();
   const prisma = getPrisma();
+  const scope = businessId
+    ? Prisma.sql`WHERE "businessId" = ${businessId}::uuid`
+    : Prisma.empty;
   const rows = await prisma.$queryRaw<Array<{ year: number }>>`
     SELECT DISTINCT EXTRACT(YEAR FROM date)::int AS year
     FROM transactions
+    ${scope}
     ORDER BY year DESC
   `;
   const set = new Set<number>([current]);
@@ -119,11 +124,14 @@ export async function listYears(): Promise<number[]> {
   return [...set].sort((a, b) => b - a);
 }
 
-export async function listTransactionsForYear(year: number): Promise<Buchung[]> {
+export async function listTransactionsForYear(
+  businessId: string,
+  year: number,
+): Promise<Buchung[]> {
   const prisma = getPrisma();
   const range = yearDateRange(year);
   const rows = await prisma.transaction.findMany({
-    where: { date: { gte: range.gte, lt: range.lt } },
+    where: { businessId, date: { gte: range.gte, lt: range.lt } },
     orderBy: [{ date: "desc" }, { category: "asc" }, { account: "asc" }],
   });
   return rows.map(toBuchung);
@@ -156,11 +164,18 @@ export async function listEntrySuggestions(): Promise<EntrySuggestions> {
   );
 }
 
-export async function totalsForYear(year: number): Promise<YearTotals> {
+/** Summen eines Jahres für einen Betrieb, ohne `businessId` über alle Betriebe. */
+export async function totalsForYear(
+  year: number,
+  businessId?: string,
+): Promise<YearTotals> {
   const prisma = getPrisma();
   const range = yearDateRange(year);
   const agg = await prisma.transaction.aggregate({
-    where: { date: { gte: range.gte, lt: range.lt } },
+    where: {
+      ...(businessId ? { businessId } : {}),
+      date: { gte: range.gte, lt: range.lt },
+    },
     _sum: { incomeCents: true, expenseCents: true },
   });
   const incomeCents = bigintToCents(agg._sum.incomeCents ?? 0n);
@@ -172,20 +187,25 @@ export async function totalsForYear(year: number): Promise<YearTotals> {
   };
 }
 
-export async function createTransaction(input: BuchungInput): Promise<Buchung> {
+export async function createTransaction(
+  businessId: string,
+  input: BuchungInput,
+): Promise<Buchung> {
   const created = await getPrisma().transaction.create({
-    data: inputToDb(input),
+    data: { ...inputToDb(input), businessId },
   });
   return toBuchung(created);
 }
 
+/** Ändert eine Buchung. Mit `businessId` wird sie in diesen Betrieb verschoben. */
 export async function updateTransaction(
   id: string,
   input: BuchungInput,
+  businessId?: string,
 ): Promise<Buchung> {
   const updated = await getPrisma().transaction.update({
     where: { id },
-    data: inputToDb(input),
+    data: { ...inputToDb(input), ...(businessId ? { businessId } : {}) },
   });
   return toBuchung(updated);
 }
@@ -199,11 +219,11 @@ export async function getTransaction(id: string): Promise<Buchung | null> {
   return row ? toBuchung(row) : null;
 }
 
-export async function exportRowsForYear(year: number) {
+export async function exportRowsForYear(businessId: string, year: number) {
   const prisma = getPrisma();
   const range = yearDateRange(year);
   const rows = await prisma.transaction.findMany({
-    where: { date: { gte: range.gte, lt: range.lt } },
+    where: { businessId, date: { gte: range.gte, lt: range.lt } },
     orderBy: [{ date: "asc" }, { category: "asc" }, { account: "asc" }],
   });
   return rows.map((row) => ({
@@ -217,7 +237,10 @@ export async function exportRowsForYear(year: number) {
   }));
 }
 
-export async function importRows(rows: CsvRowParsed[]): Promise<{
+export async function importRows(
+  businessId: string,
+  rows: CsvRowParsed[],
+): Promise<{
   imported: number;
   skipped: number;
 }> {
@@ -227,6 +250,7 @@ export async function importRows(rows: CsvRowParsed[]): Promise<{
     const dates = [...new Set(rows.map((r) => r.date))];
     const existing = await tx.transaction.findMany({
       where: {
+        businessId,
         date: { in: dates.map((d) => isoDateToUtc(d)) },
       },
     });
@@ -254,6 +278,7 @@ export async function importRows(rows: CsvRowParsed[]): Promise<{
       }
       seen.add(key);
       toCreate.push({
+        businessId,
         category: row.incomeCents > 0 ? "" : row.category,
         account: row.account,
         description: row.description,

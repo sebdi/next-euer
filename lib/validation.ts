@@ -11,6 +11,7 @@ export const USER_ERROR = {
   generic: "Die Aktion konnte nicht ausgeführt werden.",
   validation: "Bitte Eingaben prüfen.",
   importInvalid: "Die Datei enthält ungültige Zeilen.",
+  businessNotFound: "Betrieb nicht gefunden.",
 } as const;
 
 const categorySchema = z.enum(ACCOUNTING_CATEGORIES);
@@ -189,6 +190,19 @@ export const profileSettingsSchema = z
   });
 
 export const transactionIdSchema = z.uuid("Ungültige Buchung.");
+
+export const businessIdSchema = z.uuid("Ungültiger Betrieb.");
+
+export const businessInputSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, "Name fehlt.")
+      .max(60, "Name ist zu lang."),
+    art: z.enum(["freiberuflich", "gewerblich"], "Art wählen."),
+  })
+  .strict();
 
 export const yearSchema = z
   .number()

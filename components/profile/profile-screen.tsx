@@ -21,6 +21,7 @@ export function ProfileScreen({
   homeAddress,
   marginalTaxRateBps,
   loadError,
+  anzahlBetriebe = 1,
 }: {
   user: AppUser;
   jahr: number;
@@ -29,7 +30,10 @@ export function ProfileScreen({
   homeAddress: string | null;
   marginalTaxRateBps: number | null;
   loadError: string | null;
+  /** Ab zwei Betrieben wird der gemeinsame Gewinn ausgewiesen */
+  anzahlBetriebe?: number;
 }) {
+  const mehrereBetriebe = anzahlBetriebe > 1;
   const router = useRouter();
   const tax = loadError
     ? null
@@ -59,7 +63,10 @@ export function ProfileScreen({
           <div className="border-b px-4 py-3">
             <h2 className="text-sm font-medium">Erwartete Steuer {jahr}</h2>
             <p className="mt-1 text-[13px] text-muted-foreground">
-              Gewinn dieses Jahres mal deinem Grenzsteuersatz. Solidaritätszuschlag,
+              {mehrereBetriebe
+                ? `Gewinn aller ${anzahlBetriebe} Betriebe zusammen`
+                : "Gewinn dieses Jahres"}{" "}
+              mal deinem Grenzsteuersatz. Solidaritätszuschlag,
               Kirchensteuer und weitere Einkünfte sind nicht enthalten.
             </p>
           </div>
@@ -67,7 +74,7 @@ export function ProfileScreen({
             <p className="px-4 py-6 text-sm text-muted-foreground">{loadError}</p>
           ) : (
             <dl className="grid divide-y bg-surface sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-              <Stat label="Gewinn / Verlust">
+              <Stat label={mehrereBetriebe ? "Gewinn / Verlust gesamt" : "Gewinn / Verlust"}>
                 <span className={cn(totals.profitCents > 0 && "text-positive")}>
                   {formatEuroSigned(totals.profitCents)}
                 </span>
