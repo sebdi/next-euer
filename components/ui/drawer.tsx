@@ -16,7 +16,7 @@ function DrawerContent({
       <DrawerPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay" />
       <DrawerPrimitive.Content
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col rounded-t-xl border-t bg-background outline-none",
+          "fixed inset-x-0 bottom-0 z-50 flex h-[calc(100dvh-env(safe-area-inset-top)-0.75rem)] max-h-[calc(100dvh-env(safe-area-inset-top)-0.75rem)] flex-col overflow-hidden rounded-t-xl border-t bg-background pb-[env(safe-area-inset-bottom)] outline-none",
           className,
         )}
         {...props}
@@ -32,7 +32,9 @@ function DrawerContent({
 }
 
 function DrawerHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("border-b px-4 pt-2 pb-3", className)} {...props} />;
+  return (
+    <div className={cn("shrink-0 border-b px-4 pt-2 pb-3", className)} {...props} />
+  );
 }
 
 function DrawerTitle({

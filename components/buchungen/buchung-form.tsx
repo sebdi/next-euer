@@ -1,6 +1,8 @@
 "use client";
 
 import { useId, useState } from "react";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { cn } from "@/lib/utils";
 import { RadioGroup } from "radix-ui";
 import { House } from "lucide-react";
 import { toast } from "sonner";
@@ -75,6 +77,7 @@ export function BuchungForm({
   homeAddress?: string | null;
 }) {
   const uid = useId();
+  const desktop = useMediaQuery("(min-width: 768px)");
   const [typ, setTyp] = useState<BuchungTyp>(buchung?.typ ?? "ausgabe");
   const [bezeichnung, setBezeichnung] = useState(buchung?.bezeichnung ?? "");
   const [kategorieId, setKategorieId] = useState<string | null>(
@@ -187,8 +190,15 @@ export function BuchungForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-col">
-      <div className="grid gap-4 overflow-y-auto px-4 py-4 md:px-5">
+    <form
+      onSubmit={handleSubmit}
+      noValidate
+      className={cn(
+        "flex flex-col",
+        !desktop && "min-h-0 flex-1 overflow-hidden",
+      )}
+    >
+      <div className="shrink-0 px-4 pt-4 md:px-5">
         <RadioGroup.Root
           aria-label="Art der Buchung"
           value={typ}
@@ -210,7 +220,15 @@ export function BuchungForm({
             </RadioGroup.Item>
           ))}
         </RadioGroup.Root>
-
+      </div>
+      <div
+        data-vaul-no-drag
+        className={cn(
+          "grid gap-4 px-4 py-4 md:px-5",
+          !desktop &&
+            "min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y",
+        )}
+      >
         <Field id={`${uid}-bezeichnung`} label="Bezeichnung" error={errors.bezeichnung}>
           {(field) => (
             <Input
@@ -223,7 +241,7 @@ export function BuchungForm({
               }}
               placeholder="z. B. Bahnfahrt München"
               autoComplete="off"
-              autoFocus={!buchung}
+              autoFocus={!buchung && desktop}
               disabled={pending}
             />
           )}
@@ -491,7 +509,7 @@ export function BuchungForm({
         </div>
       </div>
 
-      <div className="flex flex-col-reverse gap-2 border-t bg-surface px-4 py-3 md:flex-row md:items-center md:px-5 md:rounded-b-lg">
+      <div className="flex shrink-0 flex-col-reverse gap-2 border-t bg-surface px-4 py-3 md:flex-row md:items-center md:px-5 md:rounded-b-lg">
         {onDelete && (
           <Button type="button" variant="destructive" onClick={onDelete} disabled={pending}>
             Löschen

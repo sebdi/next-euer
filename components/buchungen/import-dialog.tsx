@@ -46,7 +46,7 @@ export function ImportDialog({
   if (desktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle>CSV importieren</DialogTitle>
             <DialogDescription>
@@ -60,7 +60,7 @@ export function ImportDialog({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
+    <Drawer open={open} onOpenChange={onOpenChange} fixed>
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>CSV importieren</DrawerTitle>
@@ -118,14 +118,14 @@ function ImportForm({
 
   return (
     <form
-      className="flex min-h-0 flex-col"
+      className="flex min-h-0 flex-col overflow-hidden"
       onSubmit={(event) => {
         event.preventDefault();
         if (!file || !canImport) return;
         void onImport(file);
       }}
     >
-      <div className="grid gap-4 overflow-y-auto px-4 py-4 md:px-5">
+      <div className="grid min-h-0 gap-4 overflow-y-auto overscroll-contain px-4 py-4 touch-pan-y md:px-5">
         <div className="grid gap-1.5">
           <Label htmlFor={uid}>CSV-Datei</Label>
           <Input
@@ -196,7 +196,7 @@ function ImportForm({
         )}
       </div>
 
-      <div className="flex flex-col-reverse gap-2 border-t bg-surface px-4 py-3 md:flex-row md:justify-end md:px-5 md:rounded-b-lg">
+      <div className="flex shrink-0 flex-col-reverse gap-2 border-t bg-surface px-4 py-3 md:flex-row md:justify-end md:px-5 md:rounded-b-lg">
         <Button type="button" onClick={onCancel} disabled={pending}>
           Abbrechen
         </Button>
