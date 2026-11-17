@@ -22,6 +22,7 @@ export function CategoryCombobox({
   value,
   onChange,
   allowAll = false,
+  allowEmpty = false,
   placeholder = "Kategorie wählen",
   className,
   ...props
@@ -30,6 +31,8 @@ export function CategoryCombobox({
   onChange: (value: string | null) => void;
   /** Zeigt „Alle Kategorien“ als erste Option (für Filter) */
   allowAll?: boolean;
+  /** Erlaubt, eine gewählte Kategorie wieder zu entfernen. */
+  allowEmpty?: boolean;
   placeholder?: string;
   className?: string;
   id?: string;
@@ -78,6 +81,12 @@ export function CategoryCombobox({
                 </CommandItem>
                 <CommandSeparator />
               </>
+            )}
+            {allowEmpty && (
+              <CommandItem value="Keine Kategorie" onSelect={() => select(null)}>
+                <span className="flex-1">Keine Kategorie</span>
+                {!value && <Check className="size-3.5" aria-hidden />}
+              </CommandItem>
             )}
             {KATEGORIEN.map((k) => (
               <CommandItem

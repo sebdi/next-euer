@@ -12,11 +12,11 @@ export interface Kategorie {
 export interface Buchung {
   id: string;
   typ: BuchungTyp;
-  /** Empty for income. */
+  /** Empty for income and for an expense without a category. */
   kategorieId: string;
   konto: string;
   bezeichnung: string;
-  /** Optional invoice number. */
+  /** Optional invoice number. Only income bookings use one. */
   rechnungsnummer?: string;
   /** ISO-Datum, JJJJ-MM-TT */
   datum: string;

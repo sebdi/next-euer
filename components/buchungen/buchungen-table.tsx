@@ -95,6 +95,8 @@ export function BuchungenTable({
       <tbody>
         {buchungen.map((b) => {
           const k = getKategorie(b.kategorieId);
+          const ohneKategorie = b.typ === "ausgabe" && !b.kategorieId;
+          const rechnungsnummer = b.typ === "einnahme" ? b.rechnungsnummer : undefined;
           return (
             <tr
               key={b.id}
@@ -103,7 +105,12 @@ export function BuchungenTable({
               <td className="h-10 px-3">
                 <span
                   data-privacy
-                  className="inline-block max-w-full truncate rounded-sm border bg-surface px-1.5 py-px align-middle text-xs text-muted-foreground group-hover:bg-background"
+                  className={cn(
+                    "inline-block max-w-full truncate rounded-sm border px-1.5 py-px align-middle text-xs group-hover:bg-background",
+                    ohneKategorie
+                      ? "border-warning/40 bg-warning/15 text-warning"
+                      : "bg-surface text-muted-foreground",
+                  )}
                 >
                   {artLabel(b)}
                 </span>
@@ -115,16 +122,16 @@ export function BuchungenTable({
                 data-privacy
                 className="truncate px-3 font-medium"
                 title={
-                  b.rechnungsnummer
-                    ? `${b.bezeichnung} · ${b.rechnungsnummer}`
+                  rechnungsnummer
+                    ? `${b.bezeichnung} · ${rechnungsnummer}`
                     : b.bezeichnung
                 }
               >
                 {b.bezeichnung}
-                {b.rechnungsnummer && (
+                {rechnungsnummer && (
                   <span className="font-normal text-muted-foreground">
                     {" "}
-                    · {b.rechnungsnummer}
+                    · {rechnungsnummer}
                   </span>
                 )}
               </td>

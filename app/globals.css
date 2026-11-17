@@ -22,6 +22,7 @@
   --popover: #ffffff;
   --popover-foreground: #171717;
   --destructive: #c5221f;
+  --warning: #c05621;
   --positive: #18794e;
   --overlay: rgb(0 0 0 / 0.4);
   --radius: 6px;
@@ -47,6 +48,7 @@
   --popover: #111111;
   --popover-foreground: #ededed;
   --destructive: #f2555a;
+  --warning: #f0a05a;
   --positive: #4cc38a;
   --overlay: rgb(0 0 0 / 0.6);
   color-scheme: dark;
@@ -70,6 +72,7 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
   --color-positive: var(--positive);
   --color-overlay: var(--overlay);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;

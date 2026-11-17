@@ -135,7 +135,7 @@ export function validateCsvText(text: string): {
     const expense = parseBetrag(get("Ausgaben") || "0");
     const rawCategory = get("Art");
     const invoiceIndex = idx[OPTIONAL_INVOICE_HEADER];
-    const invoiceNumber =
+    let invoiceNumber =
       invoiceIndex == null ? "" : (cols[invoiceIndex] ?? "").trim();
     let category = rawCategory;
 
@@ -151,10 +151,6 @@ export function validateCsvText(text: string): {
       rows.push({ line, error: "Datum muss TT.MM.JJJJ sein." });
       return;
     }
-    if (invoiceNumber.length > 64) {
-      rows.push({ line, error: "Rechnungsnummer ist zu lang." });
-      return;
-    }
     if (income > 0 && expense === 0) {
       if (category !== "" && category !== LEGACY_INCOME_CATEGORY) {
         rows.push({ line, error: "Einnahmen haben keine Kategorie." });
@@ -162,10 +158,18 @@ export function validateCsvText(text: string): {
       }
       category = "";
     } else if (expense > 0 && income === 0) {
-      if (!(ACCOUNTING_CATEGORIES as readonly string[]).includes(category)) {
+      if (
+        category !== "" &&
+        !(ACCOUNTING_CATEGORIES as readonly string[]).includes(category)
+      ) {
         rows.push({ line, error: "Unbekannte Kategorie." });
         return;
       }
+      invoiceNumber = "";
+    }
+    if (invoiceNumber.length > 64) {
+      rows.push({ line, error: "Rechnungsnummer ist zu lang." });
+      return;
     }
 
     const parsed = csvRowSchema.safeParse({

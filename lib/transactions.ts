@@ -39,7 +39,7 @@ export function toBuchung(row: {
     kategorieId: einnahme ? "" : row.category,
     konto: row.account,
     bezeichnung: row.description,
-    rechnungsnummer: row.invoiceNumber?.trim() || undefined,
+    rechnungsnummer: einnahme ? row.invoiceNumber?.trim() || undefined : undefined,
     datum: utcDateToIso(row.date),
     betragCent: einnahme ? income : expense,
     bruttoCent: brutto,
@@ -62,7 +62,8 @@ export function inputToDb(input: BuchungInput) {
     : input.typ === "ausgabe"
       ? input.betragCent
       : 0;
-  const invoice = input.rechnungsnummer?.trim() ?? "";
+  const invoice =
+    input.typ === "einnahme" ? (input.rechnungsnummer?.trim() ?? "") : "";
   return {
     category: input.typ === "einnahme" ? "" : input.kategorieId,
     account:
@@ -184,7 +185,7 @@ export async function exportRowsForYear(year: number) {
     date: utcDateToIso(row.date),
     incomeCents: bigintToCents(row.incomeCents),
     expenseCents: bigintToCents(row.expenseCents),
-    invoiceNumber: row.invoiceNumber ?? "",
+    invoiceNumber: row.incomeCents > 0n ? (row.invoiceNumber ?? "") : "",
   }));
 }
 
@@ -210,7 +211,7 @@ export async function importRows(rows: CsvRowParsed[]): Promise<{
           date: utcDateToIso(row.date),
           incomeCents: bigintToCents(row.incomeCents),
           expenseCents: bigintToCents(row.expenseCents),
-          invoiceNumber: row.invoiceNumber ?? "",
+          invoiceNumber: row.incomeCents > 0n ? (row.invoiceNumber ?? "") : "",
         }),
       ),
     );
@@ -228,7 +229,8 @@ export async function importRows(rows: CsvRowParsed[]): Promise<{
         category: row.incomeCents > 0 ? "" : row.category,
         account: row.account,
         description: row.description,
-        invoiceNumber: row.invoiceNumber || null,
+        invoiceNumber:
+          row.incomeCents > 0 && row.invoiceNumber ? row.invoiceNumber : null,
         date: isoDateToUtc(row.date),
         incomeCents: centsToBigInt(row.incomeCents),
         expenseCents: centsToBigInt(row.expenseCents),

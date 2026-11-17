@@ -62,7 +62,7 @@ describe("transaction validation", () => {
     expect(income.invoiceNumber).toBe("RE-12");
   });
 
-  it("rejects a category on income and requires one on expenses", () => {
+  it("rejects a category on income and allows an expense without one", () => {
     expect(
       buchungInputSchema.safeParse({ ...valid, typ: "einnahme", kategorieId: "" }).success,
     ).toBe(true);
@@ -73,16 +73,30 @@ describe("transaction validation", () => {
         kategorieId: "Bürobedarf",
       }).success,
     ).toBe(false);
-    expect(buchungInputSchema.safeParse({ ...valid, kategorieId: "" }).success).toBe(false);
+    expect(buchungInputSchema.safeParse({ ...valid, kategorieId: "" }).success).toBe(true);
   });
 
-  it("accepts an empty invoice number and rejects one that is too long", () => {
+  it("keeps invoice numbers on income and rejects them on expenses", () => {
     expect(
-      buchungInputSchema.parse({ ...valid, rechnungsnummer: "  " }).rechnungsnummer,
-    ).toBe("");
+      buchungInputSchema.parse({
+        ...valid,
+        typ: "einnahme",
+        kategorieId: "",
+        rechnungsnummer: "  RE-12  ",
+      }).rechnungsnummer,
+    ).toBe("RE-12");
     expect(
-      buchungInputSchema.safeParse({ ...valid, rechnungsnummer: "R".repeat(65) }).success,
+      buchungInputSchema.safeParse({
+        ...valid,
+        typ: "einnahme",
+        kategorieId: "",
+        rechnungsnummer: "R".repeat(65),
+      }).success,
     ).toBe(false);
+    expect(
+      buchungInputSchema.safeParse({ ...valid, rechnungsnummer: "RE-1" }).success,
+    ).toBe(false);
+    expect(inputToDb({ ...valid, rechnungsnummer: "RE-1" }).invoiceNumber).toBeNull();
   });
 
   it("rejects csv rows with both income and expense", () => {

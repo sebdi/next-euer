@@ -90,11 +90,18 @@ export const buchungInputSchema = z
           message: "Einnahmen haben keine Kategorie.",
         });
       }
-    } else if (!isAccountingCategory(value.kategorieId)) {
+    } else if (value.kategorieId !== "" && !isAccountingCategory(value.kategorieId)) {
       ctx.addIssue({
         code: "custom",
         path: ["kategorieId"],
-        message: "Kategorie wählen.",
+        message: "Unbekannte Kategorie.",
+      });
+    }
+    if (value.typ === "ausgabe" && value.rechnungsnummer) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["rechnungsnummer"],
+        message: "Ausgaben haben keine Rechnungsnummer.",
       });
     }
     if (value.bruttoCent == null) return;
@@ -233,11 +240,18 @@ export const csvRowSchema = z
         message: "Einnahmen haben keine Kategorie.",
       });
     }
-    if (expense && !isAccountingCategory(value.category)) {
+    if (expense && value.category !== "" && !isAccountingCategory(value.category)) {
       ctx.addIssue({
         code: "custom",
         path: ["category"],
         message: "Unbekannte Kategorie.",
+      });
+    }
+    if (expense && value.invoiceNumber) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["invoiceNumber"],
+        message: "Ausgaben haben keine Rechnungsnummer.",
       });
     }
   });

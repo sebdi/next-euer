@@ -1,6 +1,6 @@
 "use client";
 
-import { artLabel, getKategorie } from "@/lib/categories";
+import { artLabel } from "@/lib/categories";
 import { formatDatum, formatEuro, formatEuroSigned } from "@/lib/format";
 import type { Buchung } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -16,8 +16,8 @@ export function BuchungenList({
   return (
     <ul className="divide-y">
       {buchungen.map((b) => {
-        const k = getKategorie(b.kategorieId);
         const einnahme = b.typ === "einnahme";
+        const ohneKategorie = !einnahme && !b.kategorieId;
         return (
           <li key={b.id}>
             <button
@@ -32,12 +32,11 @@ export function BuchungenList({
                 <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span className="num">{formatDatum(b.datum)}</span>
                   <span aria-hidden className="text-border-strong">·</span>
-                  <span data-privacy className="truncate">
-                    {b.typ === "einnahme"
-                      ? b.rechnungsnummer || artLabel(b)
-                      : [k?.name ?? artLabel(b), b.rechnungsnummer]
-                          .filter(Boolean)
-                          .join(" · ")}
+                  <span
+                    data-privacy
+                    className={cn("truncate", ohneKategorie && "text-warning")}
+                  >
+                    {einnahme ? b.rechnungsnummer || artLabel(b) : artLabel(b)}
                   </span>
                 </span>
               </span>

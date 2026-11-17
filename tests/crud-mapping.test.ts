@@ -43,6 +43,33 @@ describe("CRUD mapping", () => {
     expect(db.invoiceNumber).toBe("RE-1");
   });
 
+  it("stores an expense without a category and without an invoice number", () => {
+    const db = inputToDb({
+      typ: "ausgabe",
+      kategorieId: "",
+      konto: "",
+      rechnungsnummer: "RE-9",
+      bezeichnung: "Porto",
+      datum: "2026-01-15",
+      betragCent: 420,
+    });
+    expect(db.category).toBe("");
+    expect(db.account).toBe("");
+    expect(db.invoiceNumber).toBeNull();
+    const buchung = toBuchung({
+      id: "33333333-3333-4333-8333-333333333333",
+      category: db.category,
+      account: db.account,
+      description: db.description,
+      date: db.date,
+      incomeCents: db.incomeCents,
+      expenseCents: db.expenseCents,
+      invoiceNumber: "RE-9",
+    });
+    expect(buchung.kategorieId).toBe("");
+    expect(buchung.rechnungsnummer).toBeUndefined();
+  });
+
   it("stores 70 percent of a Bewirtungskosten gross amount", () => {
     const db = inputToDb({
       typ: "ausgabe",

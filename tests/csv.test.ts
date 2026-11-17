@@ -25,6 +25,16 @@ Bürobedarf;4930;Papier;03.02.2026;;12,50\r
     expect(result.valid[0]?.category).toBe("");
   });
 
+  it("accepts an expense without a category and drops its invoice number", () => {
+    const result = validateCsvText(
+      "Art;Konto;Bezeichnung;Datum;Einnahmen;Ausgaben;Rechnungsnummer\n;;Porto;15.01.2026;;4,20;RE-9\n",
+    );
+    expect(result.valid).toHaveLength(1);
+    expect(result.valid[0]?.category).toBe("");
+    expect(result.valid[0]?.invoiceNumber).toBe("");
+    expect(result.valid[0]?.expenseCents).toBe(420);
+  });
+
   it("reports row-specific errors and rejects invalid categories", () => {
     const result = validateCsvText(
       "Art;Konto;Bezeichnung;Datum;Einnahmen;Ausgaben\nSteuer;1;X;15.01.2026;10,00;\n",

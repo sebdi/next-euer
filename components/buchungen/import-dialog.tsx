@@ -139,8 +139,9 @@ function ImportForm({
           />
           <p className="text-xs text-muted-foreground">
             Semikolon-getrennt, UTF-8, Spalten Art; Konto; Bezeichnung; Datum;
-            Einnahmen; Ausgaben. Rechnungsnummer ist optional. Bei Einnahmen
-            bleibt Art leer.
+            Einnahmen; Ausgaben. Rechnungsnummer ist optional und gilt nur für
+            Einnahmen. Art ist bei Ausgaben optional und bleibt bei Einnahmen
+            leer.
           </p>
         </div>
 

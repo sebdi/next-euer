@@ -143,7 +143,6 @@ export function BuchungForm({
     const cent = parseBetrag(betrag);
     const next: Errors = {};
     if (!bezeichnung.trim()) next.bezeichnung = "Bezeichnung fehlt.";
-    if (typ === "ausgabe" && !kategorieId) next.kategorie = "Kategorie wählen.";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) next.datum = "Datum fehlt.";
     if (cent === null) next.betrag = "Betrag wie 1.234,56 eingeben.";
     else if (cent <= 0) next.betrag = "Betrag muss größer als 0 sein.";
@@ -162,8 +161,9 @@ export function BuchungForm({
       serverErrors = await onSubmit({
         typ,
         bezeichnung: bezeichnung.trim(),
-        kategorieId: typ === "einnahme" ? "" : kategorieId!,
-        rechnungsnummer: rechnungsnummer.trim() || undefined,
+        kategorieId: typ === "einnahme" ? "" : (kategorieId ?? ""),
+        rechnungsnummer:
+          typ === "einnahme" ? rechnungsnummer.trim() || undefined : undefined,
         konto: konto.trim(),
         datum,
         betragCent: brutto != null ? bewirtungAbziehbarCents(brutto) : cent!,
@@ -266,47 +266,49 @@ export function BuchungForm({
           )}
         </Field>
 
-        <Field
-          id={`${uid}-rechnung`}
-          label="Rechnungsnummer"
-          error={errors.rechnungsnummer}
-        >
-          {(field) => (
-            <Input
-              {...field}
-              data-privacy
-              value={rechnungsnummer}
-              onChange={(e) => {
-                setRechnungsnummer(e.target.value);
-                clear("rechnungsnummer");
-              }}
-              placeholder="optional"
-              autoComplete="off"
-              disabled={pending}
-            />
-          )}
-        </Field>
+        {typ === "einnahme" && (
+          <Field
+            id={`${uid}-rechnung`}
+            label="Rechnungsnummer"
+            error={errors.rechnungsnummer}
+          >
+            {(field) => (
+              <Input
+                {...field}
+                data-privacy
+                value={rechnungsnummer}
+                onChange={(e) => {
+                  setRechnungsnummer(e.target.value);
+                  clear("rechnungsnummer");
+                }}
+                placeholder="optional"
+                autoComplete="off"
+                disabled={pending}
+              />
+            )}
+          </Field>
+        )}
 
         {typ === "ausgabe" && (
         <Field id={`${uid}-kategorie`} label="Kategorie" error={errors.kategorie}>
           {(field) => (
             <CategoryCombobox
               {...field}
+              allowEmpty
+              placeholder="optional"
               value={kategorieId}
               onChange={(id) => {
                 setKategorieId(id);
                 clear("kategorie");
                 const k = id ? getKategorie(id) : undefined;
-                if (k) {
-                  setTyp(defaultTypForCategory(k.id));
-                  setKonto((prev) => {
-                    const previousDefault = kategorieId
-                      ? defaultAccountForCategory(kategorieId)
-                      : "";
-                    if (!prev || prev === previousDefault) return k.konto;
-                    return prev;
-                  });
-                }
+                setKonto((prev) => {
+                  const previousDefault = kategorieId
+                    ? defaultAccountForCategory(kategorieId)
+                    : "";
+                  if (prev && prev !== previousDefault) return prev;
+                  return k?.konto ?? "";
+                });
+                if (k) setTyp(defaultTypForCategory(k.id));
               }}
             />
           )}
