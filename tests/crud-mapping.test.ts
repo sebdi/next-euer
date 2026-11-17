@@ -30,14 +30,17 @@ describe("CRUD mapping", () => {
   it("round-trips an income through the database shape", () => {
     const db = inputToDb({
       typ: "einnahme",
-      kategorieId: "Nutzungseinnahme",
+      kategorieId: "",
       konto: "8200",
+      rechnungsnummer: "RE-1",
       bezeichnung: "Lizenz",
       datum: "2026-01-15",
       betragCent: 120000,
     });
     expect(db.incomeCents).toBe(120000n);
     expect(db.expenseCents).toBe(0n);
+    expect(db.category).toBe("");
+    expect(db.invoiceNumber).toBe("RE-1");
   });
 
   it("stores 70 percent of a Bewirtungskosten gross amount", () => {

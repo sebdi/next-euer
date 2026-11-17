@@ -139,7 +139,8 @@ function ImportForm({
           />
           <p className="text-xs text-muted-foreground">
             Semikolon-getrennt, UTF-8, Spalten Art; Konto; Bezeichnung; Datum;
-            Einnahmen; Ausgaben.
+            Einnahmen; Ausgaben. Rechnungsnummer ist optional. Bei Einnahmen
+            bleibt Art leer.
           </p>
         </div>
 

@@ -9,7 +9,6 @@ export const ACCOUNTING_CATEGORIES = [
   "Homeoffice",
   "Internet und Telefon",
   "Laufende EDV Kosten",
-  "Nutzungseinnahme",
   "Öffentliche und andere",
   "Übernachtungskosten",
   "Verpflegung",
@@ -31,19 +30,16 @@ const DEFAULT_ACCOUNTS: Record<AccountingCategory, string> = {
   Homeoffice: "4288",
   "Internet und Telefon": "4920",
   "Laufende EDV Kosten": "4964",
-  Nutzungseinnahme: "8200",
   "Öffentliche und andere": "4676",
   Übernachtungskosten: "4666",
   Verpflegung: "4664",
 };
 
-const INCOME_CATEGORIES = new Set<AccountingCategory>(["Nutzungseinnahme"]);
-
 export const KATEGORIEN: Kategorie[] = ACCOUNTING_CATEGORIES.map((name) => ({
   id: name,
   name,
   konto: DEFAULT_ACCOUNTS[name],
-  typ: INCOME_CATEGORIES.has(name) ? "einnahme" : "ausgabe",
+  typ: "ausgabe",
 }));
 
 const byId = new Map(KATEGORIEN.map((k) => [k.id, k]));
@@ -56,10 +52,14 @@ export function isAccountingCategory(value: string): value is AccountingCategory
   return (ACCOUNTING_CATEGORIES as readonly string[]).includes(value);
 }
 
-export function defaultTypForCategory(category: string): BuchungTyp {
-  return INCOME_CATEGORIES.has(category as AccountingCategory)
-    ? "einnahme"
-    : "ausgabe";
+export function defaultTypForCategory(_category: string): BuchungTyp {
+  return "ausgabe";
+}
+
+/** Label shown in the list. Income has no expense category. */
+export function artLabel(buchung: { typ: BuchungTyp; kategorieId: string }): string {
+  if (buchung.typ === "einnahme") return "Einnahme";
+  return getKategorie(buchung.kategorieId)?.name ?? (buchung.kategorieId || "Ausgabe");
 }
 
 export function defaultAccountForCategory(category: string): string {

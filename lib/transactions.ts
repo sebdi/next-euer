@@ -21,6 +21,7 @@ export function toBuchung(row: {
   incomeCents: bigint;
   expenseCents: bigint;
   grossCents?: bigint | null;
+  invoiceNumber?: string | null;
   routeOrigin?: string | null;
   routeDestination?: string | null;
   distanceMeters?: number | null;
@@ -35,9 +36,10 @@ export function toBuchung(row: {
   return {
     id: row.id,
     typ: einnahme ? "einnahme" : "ausgabe",
-    kategorieId: row.category,
+    kategorieId: einnahme ? "" : row.category,
     konto: row.account,
     bezeichnung: row.description,
+    rechnungsnummer: row.invoiceNumber?.trim() || undefined,
     datum: utcDateToIso(row.date),
     betragCent: einnahme ? income : expense,
     bruttoCent: brutto,
@@ -60,10 +62,14 @@ export function inputToDb(input: BuchungInput) {
     : input.typ === "ausgabe"
       ? input.betragCent
       : 0;
+  const invoice = input.rechnungsnummer?.trim() ?? "";
   return {
-    category: input.kategorieId,
-    account: input.konto.trim() || defaultAccountForCategory(input.kategorieId),
+    category: input.typ === "einnahme" ? "" : input.kategorieId,
+    account:
+      input.konto.trim() ||
+      (input.typ === "einnahme" ? "" : defaultAccountForCategory(input.kategorieId)),
     description: input.bezeichnung.trim(),
+    invoiceNumber: invoice || null,
     date: isoDateToUtc(input.datum),
     incomeCents: centsToBigInt(incomeCents),
     expenseCents: centsToBigInt(expenseCents),
@@ -172,12 +178,13 @@ export async function exportRowsForYear(year: number) {
     orderBy: [{ date: "asc" }, { category: "asc" }, { account: "asc" }],
   });
   return rows.map((row) => ({
-    category: row.category,
+    category: row.incomeCents > 0n ? "" : row.category,
     account: row.account,
     description: row.description,
     date: utcDateToIso(row.date),
     incomeCents: bigintToCents(row.incomeCents),
     expenseCents: bigintToCents(row.expenseCents),
+    invoiceNumber: row.invoiceNumber ?? "",
   }));
 }
 
@@ -197,12 +204,13 @@ export async function importRows(rows: CsvRowParsed[]): Promise<{
     const seen = new Set(
       existing.map((row) =>
         fingerprintRow({
-          category: row.category as CsvRowParsed["category"],
+          category: row.incomeCents > 0n ? "" : row.category,
           account: row.account,
           description: row.description,
           date: utcDateToIso(row.date),
           incomeCents: bigintToCents(row.incomeCents),
           expenseCents: bigintToCents(row.expenseCents),
+          invoiceNumber: row.invoiceNumber ?? "",
         }),
       ),
     );
@@ -217,9 +225,10 @@ export async function importRows(rows: CsvRowParsed[]): Promise<{
       }
       seen.add(key);
       toCreate.push({
-        category: row.category,
+        category: row.incomeCents > 0 ? "" : row.category,
         account: row.account,
         description: row.description,
+        invoiceNumber: row.invoiceNumber || null,
         date: isoDateToUtc(row.date),
         incomeCents: centsToBigInt(row.incomeCents),
         expenseCents: centsToBigInt(row.expenseCents),

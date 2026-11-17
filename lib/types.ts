@@ -12,9 +12,12 @@ export interface Kategorie {
 export interface Buchung {
   id: string;
   typ: BuchungTyp;
+  /** Empty for income. */
   kategorieId: string;
   konto: string;
   bezeichnung: string;
+  /** Optional invoice number. */
+  rechnungsnummer?: string;
   /** ISO-Datum, JJJJ-MM-TT */
   datum: string;
   /** Erfasster Betrag in Cent, immer positiv. Bei Bewirtung die abziehbaren 70 %. */

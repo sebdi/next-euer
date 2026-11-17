@@ -3,7 +3,7 @@
 import { ArrowDown, ArrowUp, ChevronsUpDown, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/ui/tooltip";
-import { getKategorie } from "@/lib/categories";
+import { artLabel, getKategorie } from "@/lib/categories";
 import { formatDatum, formatEuro } from "@/lib/format";
 import type { Buchung } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -105,7 +105,7 @@ export function BuchungenTable({
                   data-privacy
                   className="inline-block max-w-full truncate rounded-sm border bg-surface px-1.5 py-px align-middle text-xs text-muted-foreground group-hover:bg-background"
                 >
-                  {k?.name ?? "Unbekannt"}
+                  {artLabel(b)}
                 </span>
               </td>
               <td data-privacy className="num px-3 text-muted-foreground">
@@ -114,9 +114,19 @@ export function BuchungenTable({
               <td
                 data-privacy
                 className="truncate px-3 font-medium"
-                title={b.bezeichnung}
+                title={
+                  b.rechnungsnummer
+                    ? `${b.bezeichnung} · ${b.rechnungsnummer}`
+                    : b.bezeichnung
+                }
               >
                 {b.bezeichnung}
+                {b.rechnungsnummer && (
+                  <span className="font-normal text-muted-foreground">
+                    {" "}
+                    · {b.rechnungsnummer}
+                  </span>
+                )}
               </td>
               <td className="num px-3 text-muted-foreground">
                 {formatDatum(b.datum)}

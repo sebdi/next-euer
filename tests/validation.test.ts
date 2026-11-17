@@ -53,10 +53,36 @@ describe("transaction validation", () => {
     const income = inputToDb({
       ...valid,
       typ: "einnahme",
-      kategorieId: "Nutzungseinnahme",
+      kategorieId: "",
+      rechnungsnummer: " RE-12 ",
     });
     expect(income.incomeCents).toBe(6790n);
     expect(income.expenseCents).toBe(0n);
+    expect(income.category).toBe("");
+    expect(income.invoiceNumber).toBe("RE-12");
+  });
+
+  it("rejects a category on income and requires one on expenses", () => {
+    expect(
+      buchungInputSchema.safeParse({ ...valid, typ: "einnahme", kategorieId: "" }).success,
+    ).toBe(true);
+    expect(
+      buchungInputSchema.safeParse({
+        ...valid,
+        typ: "einnahme",
+        kategorieId: "Bürobedarf",
+      }).success,
+    ).toBe(false);
+    expect(buchungInputSchema.safeParse({ ...valid, kategorieId: "" }).success).toBe(false);
+  });
+
+  it("accepts an empty invoice number and rejects one that is too long", () => {
+    expect(
+      buchungInputSchema.parse({ ...valid, rechnungsnummer: "  " }).rechnungsnummer,
+    ).toBe("");
+    expect(
+      buchungInputSchema.safeParse({ ...valid, rechnungsnummer: "R".repeat(65) }).success,
+    ).toBe(false);
   });
 
   it("rejects csv rows with both income and expense", () => {

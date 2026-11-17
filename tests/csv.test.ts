@@ -12,7 +12,17 @@ Bürobedarf;4930;Papier;03.02.2026;;12,50\r
     expect(result.headersOk).toBe(true);
     expect(result.valid).toHaveLength(2);
     expect(result.valid[0]?.incomeCents).toBe(120000);
+    expect(result.valid[0]?.category).toBe("");
     expect(result.valid[1]?.expenseCents).toBe(1250);
+  });
+
+  it("accepts an optional invoice number and an empty income category", () => {
+    const result = validateCsvText(
+      "Art;Konto;Bezeichnung;Datum;Einnahmen;Ausgaben;Rechnungsnummer\n;8400;Honorar;15.01.2026;10,00;;RE-9\n",
+    );
+    expect(result.valid).toHaveLength(1);
+    expect(result.valid[0]?.invoiceNumber).toBe("RE-9");
+    expect(result.valid[0]?.category).toBe("");
   });
 
   it("reports row-specific errors and rejects invalid categories", () => {
@@ -35,7 +45,9 @@ Bürobedarf;4930;Papier;03.02.2026;;12,50\r
       },
     ]);
     expect(out.startsWith("\uFEFF")).toBe(true);
-    expect(out).toContain("Art;Konto;Bezeichnung;Datum;Einnahmen;Ausgaben");
+    expect(out).toContain(
+      "Art;Konto;Bezeichnung;Datum;Einnahmen;Ausgaben;Rechnungsnummer",
+    );
     expect(out).toContain("03.02.2026");
     expect(out).toContain("12,50");
     expect(out).toContain('"Papier; extra"');

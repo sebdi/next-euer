@@ -76,6 +76,10 @@ export function parseCsv(text: string): string[][] {
   return rows;
 }
 
+const OPTIONAL_INVOICE_HEADER = "Rechnungsnummer";
+/** Older exports used this income category. It is accepted and stored as no category. */
+const LEGACY_INCOME_CATEGORY = "Nutzungseinnahme";
+
 function headerIndex(header: string[]): Record<string, number> | null {
   const normalized = header.map((h) => h.trim());
   const idx: Record<string, number> = {};
@@ -84,6 +88,10 @@ function headerIndex(header: string[]): Record<string, number> | null {
     if (i < 0) return null;
     idx[name] = i;
   }
+  const invoice = normalized.findIndex(
+    (h) => h.toLocaleLowerCase("de") === OPTIONAL_INVOICE_HEADER.toLocaleLowerCase("de"),
+  );
+  if (invoice >= 0) idx[OPTIONAL_INVOICE_HEADER] = invoice;
   return idx;
 }
 
@@ -125,7 +133,11 @@ export function validateCsvText(text: string): {
     const date = parseFlexibleDate(get("Datum"));
     const income = parseBetrag(get("Einnahmen") || "0");
     const expense = parseBetrag(get("Ausgaben") || "0");
-    const category = get("Art");
+    const rawCategory = get("Art");
+    const invoiceIndex = idx[OPTIONAL_INVOICE_HEADER];
+    const invoiceNumber =
+      invoiceIndex == null ? "" : (cols[invoiceIndex] ?? "").trim();
+    let category = rawCategory;
 
     if (income == null) {
       rows.push({ line, error: "Einnahmen sind kein gültiger Betrag." });
@@ -139,9 +151,21 @@ export function validateCsvText(text: string): {
       rows.push({ line, error: "Datum muss TT.MM.JJJJ sein." });
       return;
     }
-    if (!(ACCOUNTING_CATEGORIES as readonly string[]).includes(category)) {
-      rows.push({ line, error: "Unbekannte Kategorie." });
+    if (invoiceNumber.length > 64) {
+      rows.push({ line, error: "Rechnungsnummer ist zu lang." });
       return;
+    }
+    if (income > 0 && expense === 0) {
+      if (category !== "" && category !== LEGACY_INCOME_CATEGORY) {
+        rows.push({ line, error: "Einnahmen haben keine Kategorie." });
+        return;
+      }
+      category = "";
+    } else if (expense > 0 && income === 0) {
+      if (!(ACCOUNTING_CATEGORIES as readonly string[]).includes(category)) {
+        rows.push({ line, error: "Unbekannte Kategorie." });
+        return;
+      }
     }
 
     const parsed = csvRowSchema.safeParse({
@@ -151,6 +175,7 @@ export function validateCsvText(text: string): {
       date,
       incomeCents: income,
       expenseCents: expense,
+      invoiceNumber,
     });
     if (!parsed.success) {
       rows.push({
@@ -174,10 +199,11 @@ export function transactionsToCsv(
     date: string;
     incomeCents: number;
     expenseCents: number;
+    invoiceNumber?: string;
   }>,
 ): string {
   const lines = [
-    [...CSV_HEADERS].join(";"),
+    [...CSV_HEADERS, OPTIONAL_INVOICE_HEADER].join(";"),
     ...rows.map((r) =>
       [
         csvCell(r.category),
@@ -186,13 +212,22 @@ export function transactionsToCsv(
         csvCell(isoToGermanDate(r.date)),
         csvCell(r.incomeCents > 0 ? formatCentsGerman(r.incomeCents) : ""),
         csvCell(r.expenseCents > 0 ? formatCentsGerman(r.expenseCents) : ""),
+        csvCell(r.invoiceNumber ?? ""),
       ].join(";"),
     ),
   ];
   return `\uFEFF${lines.join("\r\n")}`;
 }
 
-export function fingerprintRow(row: CsvRowParsed): string {
+export function fingerprintRow(row: {
+  date: string;
+  category: string;
+  account: string;
+  description: string;
+  incomeCents: number;
+  expenseCents: number;
+  invoiceNumber?: string;
+}): string {
   return [
     row.date,
     row.category,
@@ -200,5 +235,6 @@ export function fingerprintRow(row: CsvRowParsed): string {
     row.description,
     String(row.incomeCents),
     String(row.expenseCents),
+    row.invoiceNumber ?? "",
   ].join("\u001f");
 }

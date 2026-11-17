@@ -17,7 +17,7 @@ NextEÜR is a personal ledger, not tax software. It does not file with ELSTER, d
 - For **Bewirtungskosten**, enter the gross amount. The booking stores 70% of it, which is the deductible share, and keeps the gross amount so you can edit it later.
 - For **Fahrtkosten**, enter a start and a destination. The app asks a routing service for the driving distance and fills in the amount from a kilometre rate. The default rate is 0,30 €/km. You can mark the trip as a return journey, which doubles that distance. A home address saved in the account menu can be inserted as the start or the destination.
 
-Default categories are Abschreibungen, Bewirtungskosten, Bürobedarf, Fahrtkosten, Fortbildungen, Homeoffice, Internet und Telefon, Laufende EDV Kosten, Nutzungseinnahme, Öffentliche und andere, Übernachtungskosten, and Verpflegung. Suggested account numbers are placeholders. Use the chart of accounts you actually keep.
+Expenses use a category: Abschreibungen, Bewirtungskosten, Bürobedarf, Fahrtkosten, Fortbildungen, Homeoffice, Internet und Telefon, Laufende EDV Kosten, Öffentliche und andere, Übernachtungskosten, or Verpflegung. Income has no category. Every booking can store an optional invoice number. Suggested account numbers are placeholders. Use the chart of accounts you actually keep.
 
 The app does not calculate VAT, income tax, or other deduction limits.
 
@@ -155,7 +155,8 @@ Export downloads `nexteuer-YYYY.csv` for the selected calendar year. It includes
 
 - UTF-8 with a byte-order mark
 - Semicolon-separated
-- Header: `Art;Konto;Bezeichnung;Datum;Einnahmen;Ausgaben`
+- Header: `Art;Konto;Bezeichnung;Datum;Einnahmen;Ausgaben;Rechnungsnummer`
+- `Rechnungsnummer` may be omitted on import. Leave `Art` empty for income. Older files that used `Nutzungseinnahme` for income are still accepted.
 - Dates as `DD.MM.YYYY`
 - Amounts in German decimal notation, such as `1.234,56`
 - Cells that look like spreadsheet formulas are prefixed so the spreadsheet does not execute them

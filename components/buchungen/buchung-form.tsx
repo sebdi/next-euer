@@ -27,7 +27,10 @@ import { bewirtungAbziehbarCents } from "@/lib/money";
 import type { Buchung, BuchungInput, BuchungTyp } from "@/lib/types";
 
 type Errors = Partial<
-  Record<"bezeichnung" | "kategorie" | "datum" | "betrag" | "konto" | "route" | "rate", string>
+  Record<
+    "bezeichnung" | "kategorie" | "datum" | "betrag" | "konto" | "route" | "rate" | "rechnungsnummer",
+    string
+  >
 >;
 
 type RouteQuote = {
@@ -81,8 +84,9 @@ export function BuchungForm({
   const [typ, setTyp] = useState<BuchungTyp>(buchung?.typ ?? "ausgabe");
   const [bezeichnung, setBezeichnung] = useState(buchung?.bezeichnung ?? "");
   const [kategorieId, setKategorieId] = useState<string | null>(
-    buchung?.kategorieId ?? null,
+    buchung && buchung.typ !== "einnahme" ? buchung.kategorieId || null : null,
   );
+  const [rechnungsnummer, setRechnungsnummer] = useState(buchung?.rechnungsnummer ?? "");
   const [konto, setKonto] = useState(buchung?.konto ?? "");
   const [datum, setDatum] = useState(buchung?.datum ?? heuteIso());
   const [betrag, setBetrag] = useState(
@@ -139,7 +143,7 @@ export function BuchungForm({
     const cent = parseBetrag(betrag);
     const next: Errors = {};
     if (!bezeichnung.trim()) next.bezeichnung = "Bezeichnung fehlt.";
-    if (!kategorieId) next.kategorie = "Kategorie wählen.";
+    if (typ === "ausgabe" && !kategorieId) next.kategorie = "Kategorie wählen.";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(datum)) next.datum = "Datum fehlt.";
     if (cent === null) next.betrag = "Betrag wie 1.234,56 eingeben.";
     else if (cent <= 0) next.betrag = "Betrag muss größer als 0 sein.";
@@ -158,7 +162,8 @@ export function BuchungForm({
       serverErrors = await onSubmit({
         typ,
         bezeichnung: bezeichnung.trim(),
-        kategorieId: kategorieId!,
+        kategorieId: typ === "einnahme" ? "" : kategorieId!,
+        rechnungsnummer: rechnungsnummer.trim() || undefined,
         konto: konto.trim(),
         datum,
         betragCent: brutto != null ? bewirtungAbziehbarCents(brutto) : cent!,
@@ -184,6 +189,7 @@ export function BuchungForm({
         datum: serverErrors.datum,
         betrag: serverErrors.betragCent ?? serverErrors.betrag,
         konto: serverErrors.konto,
+        rechnungsnummer: serverErrors.rechnungsnummer,
       };
       setErrors(mapped);
     }
@@ -202,7 +208,20 @@ export function BuchungForm({
         <RadioGroup.Root
           aria-label="Art der Buchung"
           value={typ}
-          onValueChange={(v) => setTyp(v as BuchungTyp)}
+          onValueChange={(v) => {
+            const next = v as BuchungTyp;
+            setTyp(next);
+            if (next === "einnahme") {
+              setKonto((prev) => {
+                const previousDefault = kategorieId
+                  ? defaultAccountForCategory(kategorieId)
+                  : "";
+                return !prev || prev === previousDefault ? "" : prev;
+              });
+              setKategorieId(null);
+              clear("kategorie");
+            }
+          }}
           className="grid grid-cols-2 gap-0.5 rounded-md border bg-surface p-0.5"
         >
           {(
@@ -247,6 +266,28 @@ export function BuchungForm({
           )}
         </Field>
 
+        <Field
+          id={`${uid}-rechnung`}
+          label="Rechnungsnummer"
+          error={errors.rechnungsnummer}
+        >
+          {(field) => (
+            <Input
+              {...field}
+              data-privacy
+              value={rechnungsnummer}
+              onChange={(e) => {
+                setRechnungsnummer(e.target.value);
+                clear("rechnungsnummer");
+              }}
+              placeholder="optional"
+              autoComplete="off"
+              disabled={pending}
+            />
+          )}
+        </Field>
+
+        {typ === "ausgabe" && (
         <Field id={`${uid}-kategorie`} label="Kategorie" error={errors.kategorie}>
           {(field) => (
             <CategoryCombobox
@@ -270,6 +311,7 @@ export function BuchungForm({
             />
           )}
         </Field>
+        )}
 
         {fahrtkosten && (
           <div className="grid gap-3 rounded-md border bg-surface p-3">

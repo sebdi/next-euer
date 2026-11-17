@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ACCOUNTING_CATEGORIES } from "./categories";
+import { ACCOUNTING_CATEGORIES, isAccountingCategory } from "./categories";
 import { isValidIsoDate } from "./dates";
 import { bewirtungAbziehbarCents, parseBetrag } from "./money";
 
@@ -26,7 +26,12 @@ const centsSchema = z
 
 export const buchungInputSchema = z
   .object({
-    kategorieId: categorySchema,
+    kategorieId: z.string().trim(),
+    rechnungsnummer: z
+      .string()
+      .trim()
+      .max(64, "Rechnungsnummer ist zu lang.")
+      .optional(),
     konto: z.string().trim().max(32, "Konto ist zu lang."),
     bezeichnung: z
       .string()
@@ -74,6 +79,21 @@ export const buchungInputSchema = z
         code: "custom",
         path: ["routeOrigin"],
         message: "Die Strecke gilt nur für Fahrtkosten.",
+      });
+    }
+    if (value.typ === "einnahme") {
+      if (value.kategorieId !== "") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["kategorieId"],
+          message: "Einnahmen haben keine Kategorie.",
+        });
+      }
+    } else if (!isAccountingCategory(value.kategorieId)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["kategorieId"],
+        message: "Kategorie wählen.",
       });
     }
     if (value.bruttoCent == null) return;
@@ -160,7 +180,7 @@ export const filterSchema = z
 
 export const csvRowSchema = z
   .object({
-    category: categorySchema,
+    category: z.string().trim(),
     account: z.string().trim().max(32),
     description: z
       .string()
@@ -170,13 +190,38 @@ export const csvRowSchema = z
     date: isoDateSchema,
     incomeCents: centsSchema,
     expenseCents: centsSchema,
+    invoiceNumber: z
+      .string()
+      .trim()
+      .max(64, "Rechnungsnummer ist zu lang.")
+      .optional()
+      .default(""),
   })
-  .refine(
-    (v) =>
-      (v.incomeCents > 0 && v.expenseCents === 0) ||
-      (v.expenseCents > 0 && v.incomeCents === 0),
-    "Eine Buchung muss entweder Einnahme oder Ausgabe sein.",
-  );
+  .superRefine((value, ctx) => {
+    const income = value.incomeCents > 0 && value.expenseCents === 0;
+    const expense = value.expenseCents > 0 && value.incomeCents === 0;
+    if (!income && !expense) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Eine Buchung muss entweder Einnahme oder Ausgabe sein.",
+      });
+      return;
+    }
+    if (income && value.category !== "") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["category"],
+        message: "Einnahmen haben keine Kategorie.",
+      });
+    }
+    if (expense && !isAccountingCategory(value.category)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["category"],
+        message: "Unbekannte Kategorie.",
+      });
+    }
+  });
 
 export type BuchungInputParsed = z.infer<typeof buchungInputSchema>;
 export type CsvRowParsed = z.infer<typeof csvRowSchema>;

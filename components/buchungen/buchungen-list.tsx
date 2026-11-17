@@ -1,6 +1,6 @@
 "use client";
 
-import { getKategorie } from "@/lib/categories";
+import { artLabel, getKategorie } from "@/lib/categories";
 import { formatDatum, formatEuro, formatEuroSigned } from "@/lib/format";
 import type { Buchung } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -33,7 +33,11 @@ export function BuchungenList({
                   <span className="num">{formatDatum(b.datum)}</span>
                   <span aria-hidden className="text-border-strong">·</span>
                   <span data-privacy className="truncate">
-                    {k?.name ?? "Unbekannt"}
+                    {b.typ === "einnahme"
+                      ? b.rechnungsnummer || artLabel(b)
+                      : [k?.name ?? artLabel(b), b.rechnungsnummer]
+                          .filter(Boolean)
+                          .join(" · ")}
                   </span>
                 </span>
               </span>

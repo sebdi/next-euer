@@ -9,9 +9,11 @@ datasource db {
 /// Financial booking for one self-hosted deployment (single authorized user).
 model Transaction {
   id           String   @id @default(uuid()) @db.Uuid
+  /// Empty for income. Expense bookings use an accounting category.
   category     String
   account      String
   description  String
+  invoiceNumber String?
   date         DateTime @db.Date
   incomeCents  BigInt   @default(0)
   expenseCents BigInt   @default(0)

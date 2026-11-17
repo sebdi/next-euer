@@ -14,7 +14,7 @@ import {
   updateBuchungAction,
 } from "@/app/actions/transactions";
 import { importCsvAction } from "@/app/actions/import";
-import { getKategorie } from "@/lib/categories";
+import { artLabel, getKategorie } from "@/lib/categories";
 import type { AppUser, Buchung, BuchungInput, YearTotals } from "@/lib/types";
 import { BuchungDialog } from "./buchung-dialog";
 import { BuchungenList } from "./buchungen-list";
@@ -31,8 +31,8 @@ function compare(a: Buchung, b: Buchung, key: SortKey): number {
   switch (key) {
     case "art":
       return collator.compare(
-        getKategorie(a.kategorieId)?.name ?? a.kategorieId,
-        getKategorie(b.kategorieId)?.name ?? b.kategorieId,
+        artLabel(a),
+        artLabel(b),
       );
     case "konto":
       return collator.compare(a.konto, b.konto);
@@ -90,7 +90,7 @@ export function BuchungenApp({
       if (kategorie && b.kategorieId !== kategorie) return false;
       if (!q) return true;
       const k = getKategorie(b.kategorieId);
-      return `${b.bezeichnung} ${k?.name ?? b.kategorieId} ${b.konto}`
+      return `${b.bezeichnung} ${k?.name ?? ""} ${b.konto} ${b.rechnungsnummer ?? ""} ${artLabel(b)}`
         .toLocaleLowerCase("de")
         .includes(q);
     });
