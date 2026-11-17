@@ -2,7 +2,9 @@ import { BuchungenApp } from "@/components/buchungen/buchungen-app";
 import { requireUser } from "@/lib/auth/session";
 import { parseYearParam } from "@/lib/dates";
 import { getHomeAddress } from "@/lib/profile";
+import { emptyEntrySuggestions, type EntrySuggestions } from "@/lib/suggestions";
 import {
+  listEntrySuggestions,
   listTransactionsForYear,
   listYears,
   totalsForYear,
@@ -24,6 +26,7 @@ export default async function Page({
   let totals = { incomeCents: 0, expenseCents: 0, profitCents: 0 };
   let loadError: string | null = null;
   let homeAddress: string | null = null;
+  let suggestions: EntrySuggestions = emptyEntrySuggestions;
 
   try {
     homeAddress = await getHomeAddress(user.githubId);
@@ -32,10 +35,11 @@ export default async function Page({
   }
 
   try {
-    [buchungen, jahre, totals] = await Promise.all([
+    [buchungen, jahre, totals, suggestions] = await Promise.all([
       listTransactionsForYear(jahr),
       listYears(),
       totalsForYear(jahr),
+      listEntrySuggestions(),
     ]);
   } catch {
     loadError = "Buchungen konnten nicht geladen werden.";
@@ -58,6 +62,7 @@ export default async function Page({
       totals={totals}
       loadError={loadError}
       homeAddress={homeAddress}
+      suggestions={suggestions}
     />
   );
 }

@@ -15,6 +15,7 @@ import {
 } from "@/app/actions/transactions";
 import { importCsvAction } from "@/app/actions/import";
 import { artLabel, getKategorie } from "@/lib/categories";
+import type { EntrySuggestions } from "@/lib/suggestions";
 import type { AppUser, Buchung, BuchungInput, YearTotals } from "@/lib/types";
 import { BuchungDialog } from "./buchung-dialog";
 import { BuchungenList } from "./buchungen-list";
@@ -61,6 +62,7 @@ export function BuchungenApp({
   totals,
   loadError,
   homeAddress: initialHomeAddress,
+  suggestions,
 }: {
   user: AppUser;
   jahr: number;
@@ -69,6 +71,7 @@ export function BuchungenApp({
   totals: YearTotals;
   loadError: string | null;
   homeAddress: string | null;
+  suggestions: EntrySuggestions;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -330,6 +333,7 @@ export function BuchungenApp({
         buchung={dialog.buchung}
         onSubmit={handleSubmit}
         homeAddress={initialHomeAddress}
+        suggestions={suggestions}
         onDelete={
           dialog.buchung ? () => setToDelete(dialog.buchung ?? null) : undefined
         }

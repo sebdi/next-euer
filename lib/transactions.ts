@@ -8,6 +8,7 @@ import {
   centsToBigInt,
   profitCents,
 } from "./money";
+import { collectEntrySuggestions, type EntrySuggestions } from "./suggestions";
 import type { Buchung, BuchungInput, YearTotals } from "./types";
 import type { CsvRowParsed } from "./validation";
 import { fingerprintRow } from "./csv";
@@ -126,6 +127,33 @@ export async function listTransactionsForYear(year: number): Promise<Buchung[]> 
     orderBy: [{ date: "desc" }, { category: "asc" }, { account: "asc" }],
   });
   return rows.map(toBuchung);
+}
+
+export async function listEntrySuggestions(): Promise<EntrySuggestions> {
+  const rows = await getPrisma().transaction.findMany({
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    take: 100,
+    select: {
+      category: true,
+      account: true,
+      description: true,
+      invoiceNumber: true,
+      incomeCents: true,
+      routeOrigin: true,
+      routeDestination: true,
+    },
+  });
+  return collectEntrySuggestions(
+    rows.map((row) => ({
+      typ: row.incomeCents > 0n ? "einnahme" : "ausgabe",
+      bezeichnung: row.description,
+      konto: row.account,
+      kategorieId: row.category,
+      rechnungsnummer: row.invoiceNumber ?? "",
+      routeOrigin: row.routeOrigin ?? "",
+      routeDestination: row.routeDestination ?? "",
+    })),
+  );
 }
 
 export async function totalsForYear(year: number): Promise<YearTotals> {

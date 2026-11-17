@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { RadioGroup } from "radix-ui";
@@ -9,7 +9,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { filterTexts, type EntrySuggestions } from "@/lib/suggestions";
 import { CategoryCombobox } from "./category-combobox";
+import { SuggestInput } from "./suggest-input";
 import {
   defaultAccountForCategory,
   defaultTypForCategory,
@@ -71,6 +73,7 @@ export function BuchungForm({
   onCancel,
   onDelete,
   homeAddress,
+  suggestions,
 }: {
   buchung?: Buchung;
   pending?: boolean;
@@ -78,6 +81,7 @@ export function BuchungForm({
   onCancel: () => void;
   onDelete?: () => void;
   homeAddress?: string | null;
+  suggestions: EntrySuggestions;
 }) {
   const uid = useId();
   const desktop = useMediaQuery("(min-width: 768px)");
@@ -137,6 +141,49 @@ export function BuchungForm({
     erfasstBrutto && geparsterBetrag != null && geparsterBetrag > 0
       ? bewirtungAbziehbarCents(geparsterBetrag)
       : null;
+  const passendeBuchungen = useMemo(
+    () => suggestions.bookings.filter((row) => row.typ === typ),
+    [suggestions.bookings, typ],
+  );
+  const bezeichnungVorschlaege = useMemo(
+    () => filterTexts(passendeBuchungen.map((row) => row.bezeichnung), bezeichnung),
+    [passendeBuchungen, bezeichnung],
+  );
+  const kontoVorschlaege = useMemo(
+    () =>
+      filterTexts(
+        typ === "einnahme" ? suggestions.incomeAccounts : suggestions.expenseAccounts,
+        konto,
+      ),
+    [suggestions.expenseAccounts, suggestions.incomeAccounts, konto, typ],
+  );
+  const rechnungsVorschlaege = useMemo(
+    () => filterTexts(suggestions.invoices, rechnungsnummer),
+    [suggestions.invoices, rechnungsnummer],
+  );
+  const startVorschlaege = useMemo(
+    () => filterTexts([homeAddress ?? "", ...suggestions.origins], routeFrom),
+    [homeAddress, suggestions.origins, routeFrom],
+  );
+  const zielVorschlaege = useMemo(
+    () => filterTexts([homeAddress ?? "", ...suggestions.destinations], routeTo),
+    [homeAddress, suggestions.destinations, routeTo],
+  );
+
+  const applyBezeichnung = (value: string) => {
+    setBezeichnung(value);
+    clear("bezeichnung");
+    const row = passendeBuchungen.find((item) => item.bezeichnung === value);
+    if (!row) return;
+    if (typ === "ausgabe" && !kategorieId && row.kategorieId) {
+      setKategorieId(row.kategorieId);
+    }
+    setKonto((prev) => {
+      const previousDefault = kategorieId ? defaultAccountForCategory(kategorieId) : "";
+      if (prev.trim() && prev !== previousDefault) return prev;
+      return row.konto;
+    });
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -250,16 +297,13 @@ export function BuchungForm({
       >
         <Field id={`${uid}-bezeichnung`} label="Bezeichnung" error={errors.bezeichnung}>
           {(field) => (
-            <Input
+            <SuggestInput
               {...field}
               data-privacy
+              suggestions={bezeichnungVorschlaege}
               value={bezeichnung}
-              onChange={(e) => {
-                setBezeichnung(e.target.value);
-                clear("bezeichnung");
-              }}
+              onValueChange={applyBezeichnung}
               placeholder="z. B. Bahnfahrt München"
-              autoComplete="off"
               autoFocus={!buchung && desktop}
               disabled={pending}
             />
@@ -273,16 +317,16 @@ export function BuchungForm({
             error={errors.rechnungsnummer}
           >
             {(field) => (
-              <Input
+              <SuggestInput
                 {...field}
                 data-privacy
+                suggestions={rechnungsVorschlaege}
                 value={rechnungsnummer}
-                onChange={(e) => {
-                  setRechnungsnummer(e.target.value);
+                onValueChange={(value) => {
+                  setRechnungsnummer(value);
                   clear("rechnungsnummer");
                 }}
                 placeholder="optional"
-                autoComplete="off"
                 disabled={pending}
               />
             )}
@@ -319,18 +363,18 @@ export function BuchungForm({
           <div className="grid gap-3 rounded-md border bg-surface p-3">
             <Field id={`${uid}-start`} label="Start" error={errors.route}>
               {(field) => (
-                <div className="flex items-center gap-2">
-                  <Input
+                <div className="flex items-start gap-2">
+                  <SuggestInput
                     {...field}
-                    className="flex-1"
+                    wrapperClassName="min-w-0 flex-1"
                     data-privacy
+                    suggestions={startVorschlaege}
                     value={routeFrom}
-                    onChange={(e) => {
-                      setRouteFrom(e.target.value);
+                    onValueChange={(value) => {
+                      setRouteFrom(value);
                       clear("route");
                     }}
                     placeholder="z. B. Heidelberg, Hauptstraße 1"
-                    autoComplete="off"
                     disabled={pending || calculating}
                   />
                   <Button
@@ -346,18 +390,18 @@ export function BuchungForm({
             </Field>
             <Field id={`${uid}-ziel`} label="Ziel">
               {(field) => (
-                <div className="flex items-center gap-2">
-                  <Input
+                <div className="flex items-start gap-2">
+                  <SuggestInput
                     {...field}
-                    className="flex-1"
+                    wrapperClassName="min-w-0 flex-1"
                     data-privacy
+                    suggestions={zielVorschlaege}
                     value={routeTo}
-                    onChange={(e) => {
-                      setRouteTo(e.target.value);
+                    onValueChange={(value) => {
+                      setRouteTo(value);
                       clear("route");
                     }}
                     placeholder="z. B. Stuttgart Hbf"
-                    autoComplete="off"
                     disabled={pending || calculating}
                   />
                   <Button
@@ -487,16 +531,16 @@ export function BuchungForm({
 
         <Field id={`${uid}-konto`} label="Konto" error={errors.konto}>
           {(field) => (
-            <Input
+            <SuggestInput
               {...field}
               data-privacy
+              suggestions={kontoVorschlaege}
               value={konto}
-              onChange={(e) => {
-                setKonto(e.target.value);
+              onValueChange={(value) => {
+                setKonto(value);
                 clear("konto");
               }}
               placeholder="optional"
-              autoComplete="off"
               disabled={pending}
               className="num"
             />

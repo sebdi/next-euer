@@ -15,6 +15,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import type { EntrySuggestions } from "@/lib/suggestions";
 import type { Buchung, BuchungInput } from "@/lib/types";
 import { BuchungForm } from "./buchung-form";
 
@@ -27,6 +28,7 @@ export function BuchungDialog({
   onSubmit,
   onDelete,
   homeAddress,
+  suggestions,
 }: {
   open: boolean;
   pending?: boolean;
@@ -35,6 +37,7 @@ export function BuchungDialog({
   onSubmit: (input: BuchungInput) => Promise<Record<string, string> | null>;
   onDelete?: () => void;
   homeAddress?: string | null;
+  suggestions: EntrySuggestions;
 }) {
   const desktop = useMediaQuery("(min-width: 768px)");
   const title = buchung ? "Buchung bearbeiten" : "Neue Buchung";
@@ -48,6 +51,7 @@ export function BuchungDialog({
       buchung={buchung}
       pending={pending}
       homeAddress={homeAddress}
+      suggestions={suggestions}
       onSubmit={onSubmit}
       onCancel={() => onOpenChange(false)}
       onDelete={onDelete}

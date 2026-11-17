@@ -10,7 +10,7 @@ NextEÜR is a personal ledger, not tax software. It does not file with ELSTER, d
 
 - Sign in with GitHub. Only the numeric GitHub user ID you configure is accepted.
 - Keep a home address and a personal marginal tax rate on the profile page. The profile estimates income tax for the selected year as the EÜR profit multiplied by that rate.
-- Record income and expenses in whole euro cents, with German category names and an optional account number.
+- Record income and expenses in whole euro cents, with German category names and an optional account number. While typing, previously used descriptions, accounts, invoice numbers, and route addresses are proposed.
 - Switch calendar years and see income, expenses, and profit or loss for the whole year.
 - Search, sort, and filter the list. On a desktop you get a table. On a phone you get a list.
 - Switch light and dark mode, and blur amounts and personal details when someone is looking at your screen.
